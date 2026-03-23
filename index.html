@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Magpie — The Educator Commons</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --black:#0f0f0f;
+  --surface:#161616;
+  --surface-2:#1e1e1e;
+  --surface-3:#252525;
+  --surface-4:#2e2e2e;
+  --gold:#c8920a;
+  --gold-bright:#e8aa20;
+  --gold-dim:rgba(200,146,10,0.18);
+  --chalk:#f5f0e8;
+  --chalk-70:rgba(245,240,232,0.7);
+  --chalk-40:rgba(245,240,232,0.4);
+  --chalk-15:rgba(245,240,232,0.15);
+  --chalk-08:rgba(245,240,232,0.08);
+  --chalk-05:rgba(245,240,232,0.05);
+  --iridescent:#3db8a0;
+  --iridescent-dim:rgba(61,184,160,0.15);
+  --red-soft:#e8aaaa;
+  --red-dim:rgba(220,130,130,0.15);
+  --green-soft:#8ec4a2;
+  --green-dim:rgba(142,196,162,0.15);
+  --purple-soft:#c4bae8;
+  --purple-dim:rgba(196,186,232,0.15);
+  --focus:0 0 0 2.5px var(--gold);
+  --radius:14px;
+  --radius-sm:9px;
+  --radius-pill:999px;
+}
+
+body{
+  font-family:'DM Sans',system-ui,sans-serif;
+  background:var(--black);
+  color:var(--chalk);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ACCESSIBILITY */
+.skip-link{position:absolute;left:-9999px;top:0;background:var(--gold);color:var(--black);padding:8px 16px;font-weight:700;font-size:13px;border-radius:0 0 8px 0;z-index:9999;text-decoration:none}
+.skip-link:focus{left:0}
+:focus-visible{outline:none;box-shadow:var(--focus)!important;border-radius:var(--radius-sm)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ── TOP NAV ── */
+.topnav{
+  background:var(--surface);
+  border-bottom:1px solid var(--chalk-08);
+  display:flex;
+  align-items:center;
+  padding:0 24px;
+  height:62px;
+  gap:16px;
+  position:sticky;
+  top:0;
+  z-index:200;
+  backdrop-filter:blur(12px);
+}
+
+.logo-wrap{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  flex-shrink:0;
+  text-decoration:none;
+}
+.logo-img{
+  width:34px;
+  height:34px;
+  object-fit:contain;
+  filter:brightness(0) invert(1);
+}
+.logo-name{
+  font-family:'Playfair Display',Georgia,serif;
+  font-weight:700;
+  font-size:21px;
+  color:var(--chalk);
+  letter-spacing:-.3px;
+  line-height:1;
+}
+.logo-tagline{
+  font-size:8px;
+  font-weight:500;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--chalk-40);
+  margin-top:3px;
+}
+
+.topnav-search{
+  flex:1;
+  max-width:320px;
+  background:var(--chalk-05);
+  border:1px solid var(--chalk-15);
+  border-radius:var(--radius-pill);
+  padding:9px 16px 9px 38px;
+  color:var(--chalk);
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  outline:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(245,240,232,0.35)' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:13px center;
+  transition:border-color .15s;
+}
+.topnav-search::placeholder{color:var(--chalk-40)}
+.topnav-search:focus{border-color:var(--gold);box-shadow:var(--focus)}
+
+.topnav-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+
+.nav-btn{
+  background:var(--chalk-05);
+  border:1px solid var(--chalk-15);
+  border-radius:var(--radius-pill);
+  color:var(--chalk-70);
+  font-family:'DM Sans',sans-serif;
+  font-size:13px;
+  font-weight:500;
+  padding:8px 16px;
+  cursor:pointer;
+  transition:all .15s;
+  white-space:nowrap;
+  letter-spacing:.01em;
+}
+.nav-btn:hover{background:var(--chalk-15);color:var(--chalk)}
+.nav-btn.gold{
+  background:var(--gold);
+  color:var(--black);
+  border-color:transparent;
+  font-weight:700;
+}
+.nav-btn.gold:hover{background:var(--gold-bright)}
+
+.user-avatar{
+  width:34px;height:34px;
+  border-radius:50%;
+  background:var(--gold-dim);
+  border:1.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;
+  color:var(--gold-bright);
+  cursor:pointer;flex-shrink:0;
+  transition:all .15s;
+}
+.user-avatar:hover{background:rgba(200,146,10,0.3)}
+
+/* ── LAYOUT ── */
+.app-body{
+  display:flex;
+  flex:1;
+  max-width:1120px;
+  margin:0 auto;
+  width:100%;
+  padding:28px 20px 60px;
+  gap:26px;
+}
+
+/* ── LEFT SIDEBAR ── */
+.sidebar-left{
+  width:220px;
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  position:sticky;
+  top:90px;
+  align-self:flex-start;
+  max-height:calc(100vh - 110px);
+  overflow-y:auto;
+}
+.sidebar-left::-webkit-scrollbar{display:none}
+
+.nav-section-label{
+  font-size:9.5px;
+  font-weight:600;
+  letter-spacing:.12em;
+  color:var(--chalk-40);
+  text-transform:uppercase;
+  padding:0 10px;
+  margin:18px 0 5px;
+}
+.nav-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:9px 10px;
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  font-size:13.5px;
+  font-weight:400;
+  color:var(--chalk-70);
+  transition:all .12s;
+  border:none;
+  background:transparent;
+  width:100%;
+  text-align:left;
+  font-family:'DM Sans',sans-serif;
+}
+.nav-item:hover{background:var(--chalk-08);color:var(--chalk)}
+.nav-item.active{background:var(--gold-dim);color:var(--gold-bright);font-weight:500}
+.nav-item.active .nav-icon{filter:none}
+.nav-icon{font-size:15px;width:20px;text-align:center;flex-shrink:0;opacity:.8}
+.nav-badge{
+  margin-left:auto;
+  background:var(--gold);
+  color:var(--black);
+  font-size:9.5px;
+  font-weight:700;
+  padding:2px 7px;
+  border-radius:var(--radius-pill);
+  line-height:1.4;
+}
+
+.roost-list{display:flex;flex-direction:column;gap:1px}
+.roost-nav-item{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  font-size:12.5px;
+  color:var(--chalk-40);
+  transition:all .12s;
+  border:none;background:transparent;width:100%;text-align:left;
+  font-family:'DM Sans',sans-serif;
+}
+.roost-nav-item:hover{background:var(--chalk-05);color:var(--chalk-70)}
+.roost-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ── MAIN FEED ── */
+.main-feed{flex:1;min-width:0;display:flex;flex-direction:column;gap:18px}
+
+.feed-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px}
+.section-title{
+  font-family:'Playfair Display',serif;
+  font-size:22px;
+  font-weight:700;
+  color:var(--chalk);
+  letter-spacing:-.3px;
+}
+.section-sub{font-size:12px;color:var(--chalk-40);margin-top:4px;line-height:1.5}
+
+/* filter pills */
+.filter-pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{
+  padding:6px 14px;
+  border-radius:var(--radius-pill);
+  font-size:12px;
+  cursor:pointer;
+  background:var(--chalk-05);
+  border:1px solid var(--chalk-15);
+  color:var(--chalk-40);
+  transition:all .12s;
+  font-family:'DM Sans',sans-serif;
+  font-weight:500;
+}
+.pill.active{background:var(--chalk-15);color:var(--chalk);border-color:var(--chalk-40)}
+.pill:hover:not(.active){color:var(--chalk-70)}
+
+/* ── COMPOSE ── */
+.compose-card{
+  background:var(--surface-2);
+  border:1px solid var(--chalk-08);
+  border-radius:var(--radius);
+  padding:18px;
+}
+.compose-row{display:flex;gap:12px;align-items:flex-start}
+.compose-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:var(--gold-dim);border:1.5px solid var(--gold);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;color:var(--gold-bright);flex-shrink:0;margin-top:2px;
+}
+.compose-inner{flex:1}
+.compose-textarea{
+  width:100%;
+  background:var(--chalk-05);
+  border:1px solid var(--chalk-08);
+  border-radius:var(--radius-sm);
+  padding:11px 14px;
+  color:var(--chalk);
+  font-family:'DM Sans',sans-serif;
+  font-size:14px;
+  resize:none;
+  outline:none;
+  min-height:76px;
+  line-height:1.6;
+  transition:border-color .15s;
+}
+.compose-textarea:focus{border-color:var(--gold);box-shadow:var(--focus)}
+.compose-textarea::placeholder{color:var(--chalk-40)}
+
+.attach-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.attach-btn{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 12px;
+  border-radius:var(--radius-pill);
+  border:1px solid var(--chalk-08);
+  background:transparent;
+  color:var(--chalk-40);
+  font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;transition:all .12s;
+}
+.attach-btn:hover{background:var(--chalk-08);color:var(--chalk-70)}
+
+.type-pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.type-pill{
+  padding:6px 14px;border-radius:var(--radius-pill);
+  font-size:12px;font-weight:500;cursor:pointer;
+  border:1.5px solid;transition:all .12s;background:transparent;
+  font-family:'DM Sans',sans-serif;letter-spacing:.01em;
+}
+.tp-shiny{border-color:rgba(200,146,10,0.4);color:#e8c060}
+.tp-nest{border-color:rgba(142,196,162,0.4);color:var(--green-soft)}
+.tp-flight{border-color:rgba(61,184,160,0.4);color:var(--iridescent)}
+.tp-grounded{border-color:rgba(232,170,170,0.4);color:var(--red-soft)}
+.tp-steal{border-color:rgba(196,186,232,0.4);color:var(--purple-soft)}
+
+.tp-shiny:hover,.tp-shiny.sel{background:var(--gold-dim)}
+.tp-nest:hover,.tp-nest.sel{background:var(--green-dim)}
+.tp-flight:hover,.tp-flight.sel{background:var(--iridescent-dim)}
+.tp-grounded:hover,.tp-grounded.sel{background:var(--red-dim)}
+.tp-steal:hover,.tp-steal.sel{background:var(--purple-dim)}
+
+.compose-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+.compose-hint{font-size:12px;color:var(--chalk-40)}
+
+.steal-form{display:none;margin-top:12px;background:var(--purple-dim);border:1px solid rgba(196,186,232,0.2);border-radius:var(--radius-sm);padding:14px}
+.steal-form.show{display:block}
+.steal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.steal-label{font-size:10px;color:var(--chalk-40);font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px}
+.steal-input{
+  width:100%;background:var(--chalk-05);
+  border:1px solid var(--chalk-08);border-radius:var(--radius-sm);
+  padding:8px 10px;color:var(--chalk);
+  font-family:'DM Sans',sans-serif;font-size:13px;outline:none;
+}
+.steal-input:focus{border-color:var(--gold);box-shadow:var(--focus)}
+.steal-input::placeholder{color:var(--chalk-40)}
+.steal-full{grid-column:1/-1}
+
+.hidden-file{display:none}
+.media-preview{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.media-thumb{position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid var(--chalk-15)}
+.media-thumb img{width:100%;height:100%;object-fit:cover}
+.media-rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,.7);border:none;border-radius:50%;width:20px;height:20px;color:#fff;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* ── POST CARDS ── */
+.post-card{
+  background:var(--surface-2);
+  border:1px solid var(--chalk-08);
+  border-radius:var(--radius);
+  padding:18px;
+  transition:border-color .15s;
+}
+.post-card:hover{border-color:var(--chalk-15)}
+.post-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.post-avatar-btn{
+  width:40px;height:40px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;flex-shrink:0;cursor:pointer;border:none;
+}
+.post-meta{flex:1;min-width:0}
+.post-author{font-size:14px;font-weight:600;color:var(--chalk)}
+.post-byline{font-size:11.5px;color:var(--chalk-40);margin-top:2px}
+.post-type-badge{
+  padding:4px 11px;border-radius:var(--radius-pill);
+  font-size:10.5px;font-weight:700;flex-shrink:0;
+  letter-spacing:.04em;text-transform:uppercase;
+}
+.b-shiny{background:var(--gold-dim);color:#e8c060}
+.b-nest{background:var(--green-dim);color:var(--green-soft)}
+.b-flight{background:var(--iridescent-dim);color:var(--iridescent)}
+.b-grounded{background:var(--red-dim);color:var(--red-soft)}
+.b-steal{background:var(--purple-dim);color:var(--purple-soft)}
+
+.post-text{font-size:14px;line-height:1.7;color:var(--chalk-70)}
+.post-text strong,.post-text b{color:var(--chalk)}
+
+.steal-card{
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;
+  margin-top:12px;
+  background:var(--purple-dim);
+  border:1px solid rgba(196,186,232,0.15);
+  border-radius:var(--radius-sm);padding:14px;
+}
+.steal-meta-label{font-size:10px;color:var(--chalk-40);font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-bottom:2px}
+.steal-meta-val{font-size:13px;color:var(--chalk)}
+.steal-what{grid-column:1/-1;margin-top:4px;font-size:13px;line-height:1.55;color:var(--chalk-70);border-top:1px solid rgba(196,186,232,0.12);padding-top:10px}
+
+.post-footer{
+  display:flex;align-items:center;gap:2px;
+  margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--chalk-05);
+}
+.post-action{
+  display:flex;align-items:center;gap:5px;
+  padding:6px 10px;border-radius:8px;
+  font-size:12px;color:var(--chalk-40);
+  cursor:pointer;border:none;background:transparent;
+  transition:all .12s;font-family:'DM Sans',sans-serif;
+}
+.post-action:hover{background:var(--chalk-08);color:var(--chalk-70)}
+.post-action.shinied{color:var(--gold)}
+.post-action.collected{color:var(--green-soft)}
+.post-spacer{flex:1}
+
+/* post type accent lines */
+.post-card[data-type="shiny"]{border-left:3px solid var(--gold)}
+.post-card[data-type="nest"]{border-left:3px solid var(--green-soft)}
+.post-card[data-type="flight"]{border-left:3px solid var(--iridescent)}
+.post-card[data-type="grounded"]{border-left:3px solid var(--red-soft)}
+.post-card[data-type="steal"]{border-left:3px solid var(--purple-soft)}
+
+/* ── RIGHT SIDEBAR ── */
+.sidebar-right{
+  width:220px;flex-shrink:0;
+  display:flex;flex-direction:column;gap:14px;
+  position:sticky;top:90px;align-self:flex-start;
+}
+.widget{
+  background:var(--surface-2);
+  border:1px solid var(--chalk-08);
+  border-radius:var(--radius);
+  padding:16px;
+}
+.widget-title{
+  font-size:9.5px;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;
+  color:var(--chalk-40);margin-bottom:14px;
+}
+
+.live-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  background:rgba(220,80,80,0.15);color:#e89090;
+  border-radius:var(--radius-pill);font-size:10.5px;font-weight:700;
+  padding:3px 9px;margin-bottom:10px;
+}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#e08080;animation:pulse 1.4s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+
+.chat-item{
+  background:var(--chalk-05);border:1px solid var(--chalk-08);
+  border-radius:var(--radius-sm);padding:10px;cursor:pointer;
+  transition:border-color .12s;display:block;width:100%;
+  text-align:left;font-family:'DM Sans',sans-serif;color:inherit;margin-bottom:7px;
+}
+.chat-item:hover{border-color:var(--chalk-15)}
+.chat-item-title{font-size:12px;font-weight:500;color:var(--chalk);margin-bottom:2px}
+.chat-item-sub{font-size:11px;color:var(--chalk-40)}
+.chat-item-count{font-size:10.5px;color:var(--green-soft);margin-top:4px}
+
+.topic-row{
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:12px;padding:5px 0;
+  color:var(--chalk-40);cursor:pointer;
+  transition:color .12s;border:none;background:transparent;
+  width:100%;font-family:'DM Sans',sans-serif;
+}
+.topic-row:hover{color:var(--gold)}
+.topic-count{font-size:10.5px;color:var(--chalk-40)}
+
+/* ── VIEWS ── */
+
+/* ROOSTS */
+.roosts-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.roost-card{
+  background:var(--surface-2);border:1px solid var(--chalk-08);
+  border-radius:var(--radius);padding:16px;
+  text-align:left;width:100%;font-family:'DM Sans',sans-serif;color:inherit;
+  transition:border-color .15s;
+}
+.roost-card:hover{border-color:var(--chalk-15)}
+.roost-card-dot{width:9px;height:9px;border-radius:50%;margin-bottom:10px}
+.roost-card-name{font-size:14px;font-weight:600;color:var(--chalk);margin-bottom:4px}
+.roost-card-desc{font-size:12px;color:var(--chalk-40);line-height:1.45}
+.roost-card-meta{font-size:11px;color:var(--chalk-40);margin-top:10px;opacity:.8}
+.join-btn{
+  margin-top:10px;width:100%;
+  background:var(--chalk-05);border:1px solid var(--chalk-15);
+  border-radius:var(--radius-sm);color:var(--chalk-70);
+  font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;
+  padding:7px 12px;cursor:pointer;transition:all .12s;
+}
+.join-btn:hover{background:var(--chalk-15)}
+.join-btn.joined{background:var(--green-dim);color:var(--green-soft);border-color:rgba(142,196,162,0.3)}
+
+/* RESOURCES */
+.resources-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.res-card{
+  background:var(--surface-2);border:1px solid var(--chalk-08);
+  border-radius:var(--radius);padding:16px;cursor:pointer;
+  transition:border-color .15s;text-align:left;
+  width:100%;font-family:'DM Sans',sans-serif;color:inherit;
+}
+.res-card:hover{border-color:var(--chalk-15)}
+.res-icon{font-size:22px;margin-bottom:10px}
+.res-title{font-size:14px;font-weight:600;color:var(--chalk);margin-bottom:4px}
+.res-desc{font-size:12px;color:var(--chalk-40);line-height:1.45}
+.res-meta{font-size:11px;color:var(--gold);margin-top:10px;opacity:.85}
+
+/* LIVE CHAT */
+.chat-session-card{
+  background:var(--surface-2);border:1px solid var(--chalk-08);
+  border-radius:var(--radius);padding:16px;
+  display:flex;align-items:center;gap:14px;
+  transition:border-color .15s;
+}
+.chat-session-card:hover{border-color:var(--chalk-15)}
+.chat-session-info{flex:1}
+.chat-session-title{font-size:15px;font-weight:500;color:var(--chalk);margin-bottom:4px}
+.chat-session-sub{font-size:12px;color:var(--chalk-40)}
+
+/* NEST */
+.nest-empty{
+  text-align:center;padding:64px 24px;color:var(--chalk-40);
+}
+.nest-empty-icon{font-size:44px;margin-bottom:16px;opacity:.35}
+.nest-empty-title{font-family:'Playfair Display',serif;font-size:19px;color:var(--chalk-70);margin-bottom:10px}
+.nest-empty-sub{font-size:13px;line-height:1.65}
+
+/* ── MODALS ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,.82);z-index:500;
+  align-items:center;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:flex}
+.modal-box{
+  background:var(--surface-2);
+  border:1px solid var(--chalk-15);
+  border-radius:18px;
+  padding:30px;width:420px;max-width:95vw;
+  position:relative;
+}
+.modal-close{
+  position:absolute;top:14px;right:14px;
+  background:var(--chalk-08);border:1px solid var(--chalk-08);
+  border-radius:50%;width:32px;height:32px;
+  color:var(--chalk-70);font-size:16px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'DM Sans',sans-serif;transition:all .12s;
+}
+.modal-close:hover{background:var(--chalk-15)}
+
+.profile-header{display:flex;gap:16px;align-items:flex-start;margin-bottom:20px}
+.profile-avatar-lg{
+  width:66px;height:66px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;font-weight:700;flex-shrink:0;
+  border:2px solid var(--gold);
+}
+.profile-name{font-family:'Playfair Display',serif;font-size:20px;color:var(--chalk)}
+.profile-role{font-size:13px;color:var(--chalk-40);margin-top:3px}
+.profile-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.profile-tag{
+  padding:3px 10px;border-radius:var(--radius-pill);
+  font-size:11px;background:var(--chalk-08);color:var(--chalk-40);
+  border:1px solid var(--chalk-08);
+}
+.profile-stats{display:flex;margin-top:18px;border-top:1px solid var(--chalk-08);padding-top:16px}
+.profile-stat{flex:1;text-align:center}
+.profile-stat-val{font-size:21px;font-weight:700;color:var(--chalk)}
+.profile-stat-label{font-size:10.5px;color:var(--chalk-40);margin-top:2px}
+.profile-roosts-label{font-size:9.5px;color:var(--chalk-40);letter-spacing:.1em;text-transform:uppercase;margin:18px 0 8px}
+.profile-roost-badges{display:flex;flex-wrap:wrap;gap:6px}
+.profile-roost-badge{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:var(--radius-pill);
+  font-size:12px;border:1px solid var(--chalk-08);color:var(--chalk-40);
+}
+
+/* CHAT MODAL */
+.chat-modal-box{
+  background:var(--surface-2);
+  border:1px solid var(--chalk-15);
+  border-radius:18px;
+  width:500px;max-width:95vw;height:540px;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.chat-modal-header{
+  display:flex;align-items:center;gap:10px;
+  padding:16px 20px;border-bottom:1px solid var(--chalk-08);flex-shrink:0;
+}
+.chat-modal-title{font-size:15px;font-weight:500;color:var(--chalk);flex:1}
+.chat-messages{
+  flex:1;overflow-y:auto;padding:18px 20px;
+  display:flex;flex-direction:column;gap:14px;
+}
+.chat-messages::-webkit-scrollbar{width:4px}
+.chat-messages::-webkit-scrollbar-thumb{background:var(--chalk-15);border-radius:2px}
+.chat-msg{display:flex;gap:9px;align-items:flex-start}
+.chat-msg-av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0;margin-top:2px}
+.chat-msg-content{flex:1}
+.chat-msg-author{font-size:11px;font-weight:600;color:var(--chalk-40);margin-bottom:3px}
+.chat-msg-text{font-size:13px;line-height:1.55;color:var(--chalk);background:var(--chalk-05);border-radius:10px;padding:9px 13px;display:inline-block;max-width:100%}
+.chat-msg.mine{flex-direction:row-reverse}
+.chat-msg.mine .chat-msg-content{text-align:right}
+.chat-msg.mine .chat-msg-text{background:rgba(200,146,10,0.16);color:var(--chalk)}
+.chat-input-row{display:flex;gap:8px;padding:13px 16px;border-top:1px solid var(--chalk-08);flex-shrink:0}
+.chat-input{
+  flex:1;background:var(--chalk-05);border:1px solid var(--chalk-15);
+  border-radius:var(--radius-pill);padding:10px 16px;
+  color:var(--chalk);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;
+  transition:border-color .15s;
+}
+.chat-input:focus{border-color:var(--gold);box-shadow:var(--focus)}
+.chat-input::placeholder{color:var(--chalk-40)}
+.chat-send{
+  background:var(--gold);border:none;border-radius:var(--radius-pill);
+  color:var(--black);font-weight:700;font-size:13px;
+  padding:10px 18px;cursor:pointer;font-family:'DM Sans',sans-serif;
+  transition:background .12s;
+}
+.chat-send:hover{background:var(--gold-bright)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:960px){.sidebar-right{display:none}}
+@media(max-width:700px){
+  .sidebar-left{display:none}
+  .app-body{padding:16px 14px}
+  .resources-grid,.roosts-grid{grid-template-columns:1fr}
+}
+
+/* ── SUBTLE ANIMATIONS ── */
+.post-card{animation:fadeUp .25s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+
+/* ── AUTH MODAL ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px)}
+.auth-box{background:var(--surface-2);border:1px solid var(--chalk-15);border-radius:20px;padding:36px;width:440px;max-width:95vw}
+.auth-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;justify-content:center}
+.auth-title{font-family:'Playfair Display',serif;font-size:26px;color:var(--chalk);text-align:center;margin-bottom:6px}
+.auth-sub{font-size:13px;color:var(--chalk-40);text-align:center;margin-bottom:28px;line-height:1.5}
+.auth-tabs{display:flex;gap:0;background:var(--chalk-05);border-radius:var(--radius-pill);padding:4px;margin-bottom:24px}
+.auth-tab{flex:1;padding:8px;border-radius:var(--radius-pill);font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--chalk-40);font-family:'DM Sans',sans-serif;transition:all .15s}
+.auth-tab.active{background:var(--surface-4);color:var(--chalk)}
+.auth-field{margin-bottom:14px}
+.auth-label{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--chalk-40);margin-bottom:5px;display:block}
+.auth-input{width:100%;background:var(--chalk-05);border:1px solid var(--chalk-15);border-radius:var(--radius-sm);padding:11px 14px;color:var(--chalk);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .15s}
+.auth-input:focus{border-color:var(--gold);box-shadow:var(--focus)}
+.auth-input::placeholder{color:var(--chalk-40)}
+.auth-btn{width:100%;background:var(--gold);border:none;border-radius:var(--radius-pill);color:var(--black);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;padding:13px;cursor:pointer;margin-top:6px;transition:background .15s}
+.auth-btn:hover{background:var(--gold-bright)}
+.auth-error{font-size:12px;color:#e8aaaa;text-align:center;margin-top:10px;min-height:18px}
+.auth-note{font-size:11px;color:var(--chalk-40);text-align:center;margin-top:14px;line-height:1.5}
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(0,0,0,.3);border-top-color:var(--black);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+</style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div aria-live="polite" aria-atomic="true" class="sr-only" id="status-msg"></div>
+
+<!-- NAV -->
+<header>
+<nav class="topnav" role="navigation" aria-label="Main navigation">
+  <a href="#" class="logo-wrap" aria-label="Magpie home">
+    <img src="data:image/png;base64,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" alt="Magpie logo" width="46" height="46" style="object-fit:contain">
+    <div>
+      <div class="logo-name">Magpie</div>
+      <div class="logo-tagline">the educator commons</div>
+    </div>
+  </a>
+
+  <input class="topnav-search" type="search" placeholder="Search the commons…" aria-label="Search Magpie"/>
+
+  <div class="topnav-right">
+    <button class="nav-btn" onclick="switchNav(null,'chat')" aria-label="Live chats">🔴 Live</button>
+    <button class="nav-btn" onclick="switchNav(null,'nest')" aria-label="Your Nest">🪺 Nest</button>
+    <button class="nav-btn gold" onclick="focusCompose()" aria-label="Create a post">+ Post</button>
+    <button class="user-avatar" onclick="toggleAvatarMenu()" aria-label="Your account menu" aria-haspopup="true">JT</button>
+  </div>
+</nav>
+</header>
+
+<div class="app-body">
+
+<!-- LEFT SIDEBAR -->
+<nav class="sidebar-left" aria-label="Sections">
+  <button class="nav-item active" onclick="switchNav(this,'feed')" aria-current="page">
+    <span class="nav-icon" aria-hidden="true">⊞</span> Home Feed
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'roosts')">
+    <span class="nav-icon" aria-hidden="true">⬡</span> Roosts
+    <span class="nav-badge" aria-label="4 new">4</span>
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'resources')">
+    <span class="nav-icon" aria-hidden="true">◈</span> Resource Hub
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'chat')">
+    <span class="nav-icon" aria-hidden="true">◉</span> Live Chats
+    <span class="nav-badge" aria-label="2 live">2</span>
+  </button>
+  <button class="nav-item" onclick="switchNav(this,'nest')">
+    <span class="nav-icon" aria-hidden="true">⌂</span> Your Nest
+  </button>
+
+  <div class="nav-section-label" id="my-roosts-label">My Roosts</div>
+  <div class="roost-list" role="list" aria-labelledby="my-roosts-label">
+    <button class="roost-nav-item" onclick="switchNav(null,'roosts')"><div class="roost-dot" style="background:#8ec4a2" aria-hidden="true"></div>PBL Practitioners</button>
+    <button class="roost-nav-item" onclick="switchNav(null,'roosts')"><div class="roost-dot" style="background:#e8aaaa" aria-hidden="true"></div>Reluctant Readers</button>
+    <button class="roost-nav-item" onclick="switchNav(null,'roosts')"><div class="roost-dot" style="background:#c8920a" aria-hidden="true"></div>Math Coaches</button>
+    <button class="roost-nav-item" onclick="switchNav(null,'roosts')"><div class="roost-dot" style="background:#c4bae8" aria-hidden="true"></div>Special Ed Support</button>
+  </div>
+
+  <div class="nav-section-label" id="topics-label">Topics</div>
+  <div class="roost-list" role="list" aria-labelledby="topics-label">
+    <button class="roost-nav-item"><div class="roost-dot" style="background:#a8cfe0" aria-hidden="true"></div>#silentdebate</button>
+    <button class="roost-nav-item"><div class="roost-dot" style="background:#c4bae8" aria-hidden="true"></div>#thinkingclassroom</button>
+    <button class="roost-nav-item"><div class="roost-dot" style="background:#8ec4a2" aria-hidden="true"></div>#mathchat</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main-feed" id="main-content" tabindex="-1">
+
+  <!-- HOME FEED -->
+  <div id="view-feed" role="region" aria-label="Home Feed">
+    <div class="feed-header" style="margin-bottom:16px">
+      <div>
+        <div class="section-title">Home Feed</div>
+        <div class="section-sub">Ideas, questions, wins & woes from your flock</div>
+      </div>
+    </div>
+
+    <div class="filter-pills" role="group" aria-label="Filter by post type" style="margin-bottom:16px" id="feed-filters">
+      <button class="pill active" onclick="filterFeed('all',this)" aria-pressed="true">All</button>
+      <button class="pill" onclick="filterFeed('shiny',this)" aria-pressed="false">✦ Shiny Object</button>
+      <button class="pill" onclick="filterFeed('nest',this)" aria-pressed="false">🪺 Nest Call</button>
+      <button class="pill" onclick="filterFeed('flight',this)" aria-pressed="false">↑ Flight</button>
+      <button class="pill" onclick="filterFeed('grounded',this)" aria-pressed="false">↓ Grounded</button>
+      <button class="pill" onclick="filterFeed('steal',this)" aria-pressed="false">✨ Steal This</button>
+    </div>
+
+    <!-- COMPOSE -->
+    <div class="compose-card" style="margin-bottom:18px" role="region" aria-label="Create a post">
+      <div class="compose-row">
+        <div class="compose-avatar" aria-hidden="true">JT</div>
+        <div class="compose-inner">
+          <label for="compose-text" class="sr-only">Write your post</label>
+          <textarea class="compose-textarea" id="compose-text"
+            placeholder="Share a shiny idea, send a nest call, celebrate a flight…" rows="3"></textarea>
+
+          <div class="attach-row" role="group" aria-label="Attach media">
+            <button class="attach-btn" onclick="triggerFile('img')" aria-label="Attach image">🖼 Photo</button>
+            <button class="attach-btn" onclick="triggerFile('pdf')" aria-label="Attach document">📄 Doc</button>
+            <button class="attach-btn" onclick="addLink()" aria-label="Add link">🔗 Link</button>
+          </div>
+          <input type="file" id="file-img" class="hidden-file" accept="image/*" multiple onchange="handleImg(event)">
+          <input type="file" id="file-pdf" class="hidden-file" accept=".pdf,.doc,.docx" onchange="handleDoc(event)">
+          <div class="media-preview" id="media-preview"></div>
+          <div id="link-preview-area"></div>
+
+          <div class="steal-form" id="steal-form" aria-label="Steal This fields">
+            <div class="steal-grid">
+              <div><div class="steal-label">Grade</div><input class="steal-input" placeholder="e.g. 7th"/></div>
+              <div><div class="steal-label">Subject</div><input class="steal-input" placeholder="e.g. ELA"/></div>
+              <div><div class="steal-label">Time needed</div><input class="steal-input" placeholder="e.g. 20 min"/></div>
+              <div class="steal-full"><div class="steal-label">Why it worked</div><input class="steal-input" placeholder="The magic ingredient…"/></div>
+            </div>
+          </div>
+
+          <div class="type-pills" role="group" aria-label="Post type">
+            <button class="type-pill tp-shiny" onclick="selectType('shiny',this)" aria-pressed="false">✦ Shiny Object</button>
+            <button class="type-pill tp-nest" onclick="selectType('nest',this)" aria-pressed="false">🪺 Nest Call</button>
+            <button class="type-pill tp-flight" onclick="selectType('flight',this)" aria-pressed="false">↑ Flight</button>
+            <button class="type-pill tp-grounded" onclick="selectType('grounded',this)" aria-pressed="false">↓ Grounded</button>
+            <button class="type-pill tp-steal" onclick="selectType('steal',this)" aria-pressed="false">✨ Steal This</button>
+          </div>
+
+          <div class="compose-footer">
+            <span class="compose-hint" id="compose-hint" aria-live="polite">Choose a post type above</span>
+            <button class="nav-btn gold" onclick="submitPost()">Post</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="feed-posts" role="feed" aria-label="Posts" style="display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+
+  <!-- ROOSTS -->
+  <div id="view-roosts" style="display:none" role="region" aria-label="Roosts">
+    <div class="feed-header" style="margin-bottom:18px">
+      <div><div class="section-title">Roosts</div><div class="section-sub">Small groups around specific topics — your people</div></div>
+      <button class="nav-btn gold">+ New Roost</button>
+    </div>
+    <div class="roosts-grid" id="roosts-grid" role="list"></div>
+  </div>
+
+  <!-- RESOURCE HUB -->
+  <div id="view-resources" style="display:none" role="region" aria-label="Resource Hub">
+    <div class="feed-header" style="margin-bottom:18px">
+      <div><div class="section-title">Resource Hub</div><div class="section-sub">Curated tools, templates & lessons from the commons</div></div>
+      <button class="nav-btn gold">+ Add Resource</button>
+    </div>
+    <div class="resources-grid">
+      <button class="res-card"><div class="res-icon">📝</div><div class="res-title">Socratic Seminar Protocol</div><div class="res-desc">Full facilitation guide for structured academic discussion</div><div class="res-meta">✦ 142 shinies · ELA / Social Studies</div></button>
+      <button class="res-card"><div class="res-icon">🧮</div><div class="res-title">Thinking Classroom Kit</div><div class="res-desc">VNPS setup, good tasks, randomized grouping scripts</div><div class="res-meta">✦ 98 shinies · Math · Gr 6–12</div></button>
+      <button class="res-card"><div class="res-icon">🎭</div><div class="res-title">Silent Debate Template</div><div class="res-desc">Written debate on chart paper — zero talking, max engagement</div><div class="res-meta">✦ 87 shinies · All subjects</div></button>
+      <button class="res-card"><div class="res-icon">✍️</div><div class="res-title">Thesis Statement Scaffolds</div><div class="res-desc">Sentence frames from basic to complex for reluctant writers</div><div class="res-meta">✦ 76 shinies · ELA · Gr 5–10</div></button>
+      <button class="res-card"><div class="res-icon">🗓️</div><div class="res-title">PBL Project Planner</div><div class="res-desc">6-week backwards-design template with checkpoints</div><div class="res-meta">✦ 65 shinies · All subjects</div></button>
+      <button class="res-card"><div class="res-icon">📊</div><div class="res-title">Data Literacy Slides</div><div class="res-desc">10-slide intro to reading graphs, misleading stats, and bias</div><div class="res-meta">✦ 54 shinies · Math / Science</div></button>
+    </div>
+  </div>
+
+  <!-- LIVE CHATS -->
+  <div id="view-chat" style="display:none" role="region" aria-label="Live Chats">
+    <div class="feed-header" style="margin-bottom:18px">
+      <div><div class="section-title">Live Chats</div><div class="section-sub">Real-time discussions happening now and upcoming</div></div>
+      <button class="nav-btn gold">+ Host a Chat</button>
+    </div>
+    <div id="chat-sessions-list" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+
+  <!-- YOUR NEST -->
+  <div id="view-nest" style="display:none" role="region" aria-label="Your Nest">
+    <div class="feed-header" style="margin-bottom:18px">
+      <div><div class="section-title">Your Nest</div><div class="section-sub">Everything you've collected — your personal hoard</div></div>
+    </div>
+    <div class="nest-empty">
+      <div class="nest-empty-icon">🪺</div>
+      <div class="nest-empty-title">Your nest is empty</div>
+      <div class="nest-empty-sub">Hit "Collect This" on any post to bring it home.<br>Magpies collect shiny things. That's the whole deal.</div>
+    </div>
+    <div id="nest-posts" style="display:flex;flex-direction:column;gap:14px"></div>
+  </div>
+
+</main>
+
+<!-- RIGHT SIDEBAR -->
+<aside class="sidebar-right" aria-label="Sidebar">
+
+  <div class="widget">
+    <div class="widget-title">Happening Now</div>
+    <div class="live-badge"><div class="live-dot"></div>2 live</div>
+    <button class="chat-item" onclick="openChatModal('Silent Debate Strategies')">
+      <div class="chat-item-title">Silent Debate Strategies</div>
+      <div class="chat-item-sub">hosted by @mrsguerrero</div>
+      <div class="chat-item-count">58 in the room</div>
+    </button>
+    <button class="chat-item" onclick="openChatModal('Grading Less, Learning More')">
+      <div class="chat-item-title">Grading Less, Learning More</div>
+      <div class="chat-item-sub">hosted by @petersonmath</div>
+      <div class="chat-item-count">34 in the room</div>
+    </button>
+  </div>
+
+  <div class="widget">
+    <div class="widget-title">Trending Topics</div>
+    <div role="list">
+      <button class="topic-row" role="listitem">#silentdebate <span class="topic-count">48 posts</span></button>
+      <button class="topic-row" role="listitem">#bombledlesson <span class="topic-count">31 posts</span></button>
+      <button class="topic-row" role="listitem">#thinkingclassroom <span class="topic-count">27 posts</span></button>
+      <button class="topic-row" role="listitem">#mathchat <span class="topic-count">19 posts</span></button>
+      <button class="topic-row" role="listitem">#PBL <span class="topic-count">16 posts</span></button>
+    </div>
+  </div>
+
+  <div class="widget">
+    <div class="widget-title">Suggested Roosts</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--chalk-70)">
+          <div style="width:7px;height:7px;border-radius:50%;background:#a8cfe0;flex-shrink:0"></div>Secondary Science
+        </div>
+        <button class="pill" style="font-size:11px;padding:4px 10px">Join</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--chalk-70)">
+          <div style="width:7px;height:7px;border-radius:50%;background:#e8aaaa;flex-shrink:0"></div>New Teachers
+        </div>
+        <button class="pill" style="font-size:11px;padding:4px 10px">Join</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--chalk-70)">
+          <div style="width:7px;height:7px;border-radius:50%;background:#c4bae8;flex-shrink:0"></div>EdTech Reviews
+        </div>
+        <button class="pill" style="font-size:11px;padding:4px 10px">Join</button>
+      </div>
+    </div>
+  </div>
+
+</aside>
+</div>
+
+<!-- PROFILE MODAL -->
+<div class="modal-overlay" id="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-name" onclick="closeProfileBg(event)">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeProfileDirect()" aria-label="Close profile">✕</button>
+    <div id="profile-content"></div>
+  </div>
+</div>
+
+<!-- CHAT MODAL -->
+<div class="modal-overlay" id="chat-modal" role="dialog" aria-modal="true" aria-labelledby="chat-modal-title" onclick="closeChatBg(event)">
+  <div class="chat-modal-box">
+    <div class="chat-modal-header">
+      <div class="live-badge"><div class="live-dot"></div>live</div>
+      <div class="chat-modal-title" id="chat-modal-title"></div>
+      <button class="modal-close" style="position:static;flex-shrink:0" onclick="closeChatDirect()" aria-label="Close chat">✕</button>
+    </div>
+    <div class="chat-messages" id="chat-messages" role="log" aria-label="Chat messages" aria-live="polite"></div>
+    <div class="chat-input-row">
+      <label for="chat-input" class="sr-only">Send a message</label>
+      <input id="chat-input" class="chat-input" type="text" placeholder="Say something…" onkeydown="if(event.key==='Enter')sendChat()"/>
+      <button class="chat-send" onclick="sendChat()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── SUPABASE ── */
+const SUPABASE_URL = 'https://nknemdmfmatbtidgflig.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_6pjlK46-meswasiqiQhYjg_DWTWf22I';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+
+/* ── DATA ── */
+const POSTS=[
+  {id:1,type:'shiny',author:'Mrs. Guerrero',handle:'mrsguerrero',role:'ELA · 8th Grade · Jefferson Middle',initials:'MG',avBg:'rgba(200,146,10,0.25)',avColor:'#e8c060',text:'Silent debate is genuinely the best thing I\'ve discovered in five years. Students write arguments on chart paper, respond in silence with sticky notes, then you reveal the pattern of thinking. Zero prep. Maximum engagement. <strong>Steal this immediately.</strong>',shinies:47,time:'2h ago',roost:'ELA Collective'},
+  {id:2,type:'grounded',author:'Pete Nguyen',handle:'peteng',role:'Math · 10th Grade · Westside High',initials:'PN',avBg:'rgba(232,170,170,0.25)',avColor:'#e8aaaa',text:'I bombed a probability lesson today. Tried to make it "relevant" with lottery examples and half the class had opinions about gambling being wrong. Completely derailed. I\'m laughing but also not. Anyone have a better hook for probability?',shinies:31,time:'4h ago',roost:'Math Coaches'},
+  {id:3,type:'steal',author:'Dr. Lindquist',handle:'drlindquist',role:'Science · 6th Grade · River View',initials:'DL',avBg:'rgba(61,184,160,0.25)',avColor:'#3db8a0',text:'Share your best low-prep science hook.',shinies:28,time:'6h ago',steal:{grade:'6th',subject:'Science',time:'15 min',what:'Open with a jar of dirt and ask "what\'s alive in here?" Kids make predictions. Then we look at soil microbiome images. The cognitive dissonance is *everything*.',why:'Connects microscopy to something they\'ve touched and ignored'}},
+  {id:4,type:'flight',author:'Coach Tanaka',handle:'coach_tanaka',role:'Instructional Coach · District-wide',initials:'CT',avBg:'rgba(142,196,162,0.25)',avColor:'#8ec4a2',text:'A 7th grader stopped me in the hall today to tell me she finally "gets" fractions after her teacher used fraction bars with colored water. She\'s been struggling since 3rd grade. ↑ Small win. Teachers changed a kid\'s math story. That\'s the whole job.',shinies:89,time:'8h ago',roost:'Math Coaches'},
+  {id:5,type:'nest',author:'Taylor Kim',handle:'taylorkim',role:'Special Ed · Elementary · Oakdale',initials:'TK',avBg:'rgba(196,186,232,0.25)',avColor:'#c4bae8',text:'Calling all special ed folks — how do you handle IEP goal tracking without it taking over your life? I\'m drowning in Google Sheets and none of my systems are sustainable. 🪺',shinies:22,time:'12h ago',roost:'Special Ed Support'},
+  {id:6,type:'shiny',author:'Wayground Staff',handle:'wayground_alex',role:'Wayground EdTech · ⚑ Affiliated',initials:'WA',avBg:'rgba(200,146,10,0.12)',avColor:'#c8920a',text:'Honest take: we launched a new PBL feature last quarter and the engagement numbers were fine but a teacher DM\'d me that it actually *increased* their prep time. We need to hear more of that. If you\'ve tried Wayground for PBL — what actually happened?',shinies:18,time:'1d ago'},
+];
+
+const ROOSTS_DATA=[
+  {name:'PBL Practitioners',desc:'Project-based learning in the real world — what works, what doesn\'t',members:'342',posts:'12 posts today',color:'#8ec4a2',joined:true},
+  {name:'Reluctant Readers',desc:'Strategies for getting kids who hate reading to read',members:'218',posts:'8 posts today',color:'#e8aaaa',joined:true},
+  {name:'Math Coaches',desc:'Instructional coaching, number sense, and the thinking classroom',members:'189',posts:'6 posts today',color:'#c8920a',joined:true},
+  {name:'Special Ed Support',desc:'IEPs, accommodations, co-teaching, and surviving the paperwork',members:'256',posts:'15 posts today',color:'#c4bae8',joined:true},
+  {name:'Secondary Science',desc:'Labs, phenomena-based learning, NGSS, and real classroom science',members:'174',posts:'4 posts today',color:'#a8cfe0',joined:false},
+  {name:'New Teachers',desc:'First 1–3 years: the good, the hard, and what nobody told you',members:'421',posts:'22 posts today',color:'#3db8a0',joined:false},
+  {name:'EdTech Reviews',desc:'Honest practitioner reviews of tools — no affiliate links, ever',members:'310',posts:'9 posts today',color:'#e8c060',joined:false},
+  {name:'Counselors Corner',desc:'School counselors, MTSS, SEL, and the work that doesn\'t get seen',members:'143',posts:'3 posts today',color:'#e8aaaa',joined:false},
+];
+
+const PROFILES={
+  mrsguerrero:{name:'Mrs. Guerrero',role:'ELA · 8th Grade · Jefferson Middle',initials:'MG',avBg:'rgba(200,146,10,0.25)',avColor:'#e8c060',posts:'284',flock:'1.2k',following:'87',roosts:['ELA Collective','Silent Debate','PBL Practitioners'],tags:['ELA','8th Grade','Jefferson Middle']},
+  peteng:{name:'Pete Nguyen',role:'Math · 10th Grade · Westside High',initials:'PN',avBg:'rgba(232,170,170,0.25)',avColor:'#e8aaaa',posts:'156',flock:'432',following:'64',roosts:['Math Coaches','Secondary Science'],tags:['Math','High School','Westside']},
+  drlindquist:{name:'Dr. Lindquist',role:'Science · 6th Grade · River View',initials:'DL',avBg:'rgba(61,184,160,0.25)',avColor:'#3db8a0',posts:'201',flock:'678',following:'102',roosts:['Secondary Science','PBL Practitioners'],tags:['Science','6th Grade','NGSS']},
+  coach_tanaka:{name:'Coach Tanaka',role:'Instructional Coach · District-wide',initials:'CT',avBg:'rgba(142,196,162,0.25)',avColor:'#8ec4a2',posts:'89',flock:'543',following:'210',roosts:['Math Coaches','PBL Practitioners','New Teachers'],tags:['Coach','District','Math']},
+  taylorkim:{name:'Taylor Kim',role:'Special Ed · Elementary · Oakdale',initials:'TK',avBg:'rgba(196,186,232,0.25)',avColor:'#c4bae8',posts:'74',flock:'298',following:'55',roosts:['Special Ed Support','New Teachers'],tags:['Special Ed','Elementary']},
+  you:{name:'Jamie Thompson',role:'ELA · 9th Grade · Central High',initials:'JT',avBg:'rgba(200,146,10,0.25)',avColor:'#e8c060',posts:'43',flock:'124',following:'67',roosts:['ELA Collective','PBL Practitioners'],tags:['ELA','9th Grade','Central High']},
+};
+
+const CHAT_MSGS={
+  'Silent Debate Strategies':[
+    {from:'mrsguerrero',i:'MG',c:'rgba(200,146,10,0.3)',t:'The key is the reveal at the end — when you show everyone\'s thinking on the wall, kids are *shocked* by what they actually produced together.'},
+    {from:'peteng',i:'PN',c:'rgba(232,170,170,0.25)',t:'Do you use a timer for each rotation? Or let it flow naturally?'},
+    {from:'mrsguerrero',i:'MG',c:'rgba(200,146,10,0.3)',t:'Timer! 4 min per station. If they don\'t finish that\'s fine — the constraint creates urgency.'},
+    {from:'coach_tanaka',i:'CT',c:'rgba(142,196,162,0.25)',t:'Can this work for math? Like, could you do a silent debate on different solution strategies?'},
+  ],
+  'Grading Less, Learning More':[
+    {from:'peteng',i:'PN',c:'rgba(232,170,170,0.25)',t:'I stopped grading homework last semester. Just completion checks. Parent emails were rough at first but then... nothing bad happened.'},
+    {from:'taylorkim',i:'TK',c:'rgba(196,186,232,0.25)',t:'What did you replace it with for feedback?'},
+    {from:'peteng',i:'PN',c:'rgba(232,170,170,0.25)',t:'Exit tickets that I skim (not grade) and use to plan the next day. Game changer.'},
+  ],
+};
+
+/* ── STATE ── */
+let selectedType = null;
+let collectedIds = new Set();
+let shiniedIds = new Set();
+let nestPosts = [];
+
+/* ── ANNOUNCE ── */
+function announce(msg){
+  const el=document.getElementById('status-msg');
+  el.textContent='';
+  setTimeout(()=>{el.textContent=msg},50);
+}
+
+/* ── FEED ── */
+const TYPE_LABEL={shiny:'✦ Shiny Object',nest:'🪺 Nest Call',flight:'↑ Flight',grounded:'↓ Grounded',steal:'✨ Steal This'};
+const TYPE_BADGE={shiny:'b-shiny',nest:'b-nest',flight:'b-flight',grounded:'b-grounded',steal:'b-steal'};
+
+function renderFeed(filter){
+  const feed=document.getElementById('feed-posts');
+  const visible=filter==='all'?POSTS:POSTS.filter(p=>p.type===filter);
+  if(!visible.length){
+    feed.innerHTML=`<div style="text-align:center;padding:40px;color:var(--chalk-40);font-size:14px">No posts here yet.</div>`;
+    return;
+  }
+  feed.innerHTML=visible.map(p=>`
+    <article class="post-card" data-id="${p.id}" data-type="${p.type}" role="article" aria-label="Post by ${p.author}">
+      <div class="post-header">
+        <button class="post-avatar-btn" style="background:${p.avBg};color:${p.avColor}"
+          onclick="openProfile('${p.handle}')"
+          aria-label="View ${p.author}'s profile">${p.initials}</button>
+        <div class="post-meta">
+          <div class="post-author">${p.author}</div>
+          <div class="post-byline">${p.role} · ${p.time}${p.roost?` · <span style="color:var(--chalk-40)">⬡ ${p.roost}</span>`:''}</div>
+        </div>
+        <div class="post-type-badge ${TYPE_BADGE[p.type]}" aria-label="Post type: ${TYPE_LABEL[p.type]}">${TYPE_LABEL[p.type]}</div>
+      </div>
+      <div class="post-text">${p.text}</div>
+      ${p.steal?`
+        <div class="steal-card">
+          <div><div class="steal-meta-label">Grade</div><div class="steal-meta-val">${p.steal.grade}</div></div>
+          <div><div class="steal-meta-label">Subject</div><div class="steal-meta-val">${p.steal.subject}</div></div>
+          <div><div class="steal-meta-label">Time</div><div class="steal-meta-val">${p.steal.time}</div></div>
+          <div class="steal-full"><div class="steal-meta-label">Why it worked</div><div class="steal-what">${p.steal.why}</div></div>
+        </div>`:''}
+      <div class="post-footer">
+        <button class="post-action ${shiniedIds.has(p.id)?'shinied':''}"
+          onclick="toggleShiny(${p.id},this)"
+          aria-label="${shiniedIds.has(p.id)?'Remove shiny from':'Give a shiny to'} this post"
+          aria-pressed="${shiniedIds.has(p.id)}">
+          ✦ <span class="shiny-count">${shiniedIds.has(p.id)?p.shinies+1:p.shinies}</span>
+        </button>
+        <button class="post-action ${collectedIds.has(p.id)?'collected':''}"
+          onclick="toggleCollect(${p.id},this,'${p.author}',\`${p.text.replace(/`/g,'\\`')}\`,'${p.type}')"
+          aria-label="${collectedIds.has(p.id)?'Remove from':'Add to'} Your Nest"
+          aria-pressed="${collectedIds.has(p.id)}">
+          🪺 ${collectedIds.has(p.id)?'Collected':'Collect This'}
+        </button>
+        <div class="post-spacer"></div>
+        <button class="post-action" aria-label="Share this post">↗ Drop in Roost</button>
+      </div>
+    </article>`).join('');
+}
+
+function filterFeed(type,btn){
+  document.querySelectorAll('#feed-filters .pill').forEach(b=>{
+    b.classList.remove('active');b.setAttribute('aria-pressed','false');
+  });
+  btn.classList.add('active');btn.setAttribute('aria-pressed','true');
+  renderFeed(type);
+  announce(`Showing: ${type==='all'?'all posts':TYPE_LABEL[type]}`);
+}
+
+function toggleShiny(id,btn){
+  const p=POSTS.find(x=>x.id===id);if(!p)return;
+  const was=shiniedIds.has(id);
+  was?shiniedIds.delete(id):shiniedIds.add(id);
+  btn.classList.toggle('shinied',!was);
+  btn.setAttribute('aria-pressed',String(!was));
+  btn.querySelector('.shiny-count').textContent=was?p.shinies:p.shinies+1;
+  btn.setAttribute('aria-label',`${!was?'Remove shiny from':'Give a shiny to'} this post`);
+  announce(was?'Shiny removed':'✦ Shiny given!');
+}
+
+function toggleCollect(id,btn,author,text,type){
+  const was=collectedIds.has(id);
+  was?collectedIds.delete(id):collectedIds.add(id);
+  btn.classList.toggle('collected',!was);
+  btn.setAttribute('aria-pressed',String(!was));
+  btn.textContent=`🪺 ${!was?'Collected':'Collect This'}`;
+  btn.setAttribute('aria-label',`${!was?'Remove from':'Add to'} Your Nest`);
+  if(!was){
+    nestPosts.push({id,author,text,type});
+    announce('Added to Your Nest 🪺');
+  } else {
+    nestPosts=nestPosts.filter(p=>p.id!==id);
+    announce('Removed from Your Nest');
+  }
+  renderNest();
+}
+
+function renderNest(){
+  const container=document.getElementById('nest-posts');
+  const empty=document.querySelector('.nest-empty');
+  if(!nestPosts.length){
+    empty.style.display='block';container.innerHTML='';return;
+  }
+  empty.style.display='none';
+  container.innerHTML=nestPosts.map(p=>`
+    <div class="post-card" data-type="${p.type}">
+      <div class="post-header">
+        <div class="post-type-badge ${TYPE_BADGE[p.type]}">${TYPE_LABEL[p.type]}</div>
+        <div class="post-meta"><div class="post-author">${p.author}</div></div>
+      </div>
+      <div class="post-text">${p.text}</div>
+    </div>`).join('');
+}
+
+/* ── ROOSTS ── */
+function renderRoosts(){
+  document.getElementById('roosts-grid').innerHTML=ROOSTS_DATA.map((r,i)=>`
+    <div class="roost-card" role="listitem">
+      <div class="roost-card-dot" style="background:${r.color}" aria-hidden="true"></div>
+      <div class="roost-card-name">${r.name}</div>
+      <div class="roost-card-desc">${r.desc}</div>
+      <div class="roost-card-meta">${r.members} members · ${r.posts}</div>
+      <button class="join-btn ${r.joined?'joined':''}"
+        onclick="toggleRoost(${i},this)"
+        aria-pressed="${r.joined}">${r.joined?'✓ Roosting':'Join Roost'}</button>
+    </div>`).join('');
+}
+
+function toggleRoost(i,btn){
+  ROOSTS_DATA[i].joined=!ROOSTS_DATA[i].joined;
+  btn.classList.toggle('joined',ROOSTS_DATA[i].joined);
+  btn.textContent=ROOSTS_DATA[i].joined?'✓ Roosting':'Join Roost';
+  btn.setAttribute('aria-pressed',ROOSTS_DATA[i].joined);
+  announce(ROOSTS_DATA[i].joined?`Joined ${ROOSTS_DATA[i].name} 🪺`:`Left ${ROOSTS_DATA[i].name}`);
+}
+
+/* ── CHATS ── */
+function renderChatSessions(){
+  const sessions=[
+    {title:'Silent Debate Strategies',host:'@mrsguerrero',count:58,topic:'ELA / Discussion',live:true},
+    {title:'Grading Less, Learning More',host:'@petersonmath',count:34,topic:'Assessment / All',live:true},
+    {title:'Supporting ELLs in Math',host:'@drlindquist',topic:'Math / ELL',live:false,when:'Tomorrow 4 PM ET'},
+    {title:'Trauma-Informed Reset Strategies',host:'@coach_tanaka',topic:'SEL / All',live:false,when:'Thu 7 PM ET'},
+  ];
+  document.getElementById('chat-sessions-list').innerHTML=sessions.map(s=>`
+    <div class="chat-session-card">
+      <div class="chat-session-info">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          ${s.live?`<div class="live-badge" style="margin-bottom:0"><div class="live-dot"></div>live</div>`:
+            `<span style="font-size:11px;background:var(--chalk-05);color:var(--chalk-40);padding:3px 9px;border-radius:var(--radius-pill)">upcoming</span>`}
+          <span style="font-size:12px;color:var(--chalk-40)">${s.topic}</span>
+        </div>
+        <div class="chat-session-title">${s.title}</div>
+        <div class="chat-session-sub">Hosted by ${s.host}${s.live?` · ${s.count} in room`:s.when?` · ${s.when}`:''}</div>
+      </div>
+      ${s.live?`<button class="nav-btn gold" onclick="openChatModal('${s.title}')">Join</button>`:
+        `<button class="nav-btn">Remind me</button>`}
+    </div>`).join('');
+}
+
+/* ── COMPOSE ── */
+function focusCompose(){
+  switchNav(document.querySelector('.nav-item'),document.getElementById('view-feed')?'feed':'feed');
+  document.getElementById('compose-text').focus();
+  document.getElementById('compose-text').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function selectType(type,btn){
+  document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
+  btn.classList.add('sel');btn.setAttribute('aria-pressed','true');
+  selectedType=type;
+  const hints={shiny:'Share an idea, resource, or insight',nest:'Ask for help from your flock',flight:'Celebrate a win, big or small',grounded:'Be honest about a struggle or bombed lesson',steal:'Share a structured lesson others can copy'};
+  document.getElementById('compose-hint').textContent=hints[type]||'';
+  document.getElementById('steal-form').classList.toggle('show',type==='steal');
+}
+
+function submitPost(){
+  const text=document.getElementById('compose-text').value.trim();
+  if(!text){announce('Write something first!');return;}
+  if(!selectedType){announce('Choose a post type first.');return;}
+  const newPost={
+    id:Date.now(),type:selectedType,
+    author:'Jamie Thompson',handle:'you',role:'ELA · 9th Grade · Central High',
+    initials:'JT',avBg:'rgba(200,146,10,0.25)',avColor:'#e8c060',
+    text,shinies:0,time:'Just now'
+  };
+  POSTS.unshift(newPost);
+  renderFeed('all');
+  document.getElementById('compose-text').value='';
+  document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
+  selectedType=null;
+  document.getElementById('compose-hint').textContent='Choose a post type above';
+  document.getElementById('steal-form').classList.remove('show');
+  announce('Posted! ✦');
+}
+
+function triggerFile(type){document.getElementById('file-'+type).click()}
+function handleImg(e){
+  const prev=document.getElementById('media-preview');
+  Array.from(e.target.files).forEach(f=>{
+    const url=URL.createObjectURL(f);
+    const div=document.createElement('div');div.className='media-thumb';
+    div.innerHTML=`<img src="${url}" alt="${f.name}"><button class="media-rm" aria-label="Remove image" onclick="this.parentElement.remove()">✕</button>`;
+    prev.appendChild(div);
+  });
+}
+function handleDoc(e){const f=e.target.files[0];if(!f)return;announce(`📄 ${f.name} attached`)}
+function addLink(){
+  const url=prompt('Paste a URL:');
+  if(!url)return;
+  const area=document.getElementById('link-preview-area');
+  try{const host=new URL(url).hostname;
+    area.innerHTML=`<div style="margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;display:flex;gap:10px;align-items:center"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--chalk)">${host}</div><div style="font-size:11px;color:var(--chalk-40);margin-top:2px">${url}</div></div><button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px" onclick="this.closest('[style]').remove()" aria-label="Remove link">✕</button></div>`;}
+  catch{}
+}
+
+/* ── NAVIGATION ── */
+const VIEWS=['feed','roosts','resources','chat','nest'];
+function showView(name){
+  VIEWS.forEach(v=>{
+    const el=document.getElementById('view-'+v);
+    if(el) el.style.display=v===name?'block':'none';
+  });
+}
+function switchNav(btn,view){
+  if(btn){
+    document.querySelectorAll('.nav-item').forEach(b=>{b.classList.remove('active');b.removeAttribute('aria-current')});
+    btn.classList.add('active');btn.setAttribute('aria-current','page');
+  }
+  showView(view);
+  if(view==='roosts')renderRoosts();
+  if(view==='chat')renderChatSessions();
+}
+
+/* ── PROFILES ── */
+function openProfile(who){
+  const p=PROFILES[who]||PROFILES.mrsguerrero;
+  document.getElementById('profile-content').innerHTML=`
+    <div class="profile-header">
+      <div class="profile-avatar-lg" style="background:${p.avBg};color:${p.avColor}" id="profile-modal-name" aria-label="${p.name}'s avatar">${p.initials}</div>
+      <div>
+        <div class="profile-name">${p.name}</div>
+        <div class="profile-role">${p.role}</div>
+        <div class="profile-tags">${p.tags.map(t=>`<span class="profile-tag">${t}</span>`).join('')}</div>
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div class="profile-stat"><div class="profile-stat-val">${p.posts}</div><div class="profile-stat-label">posts</div></div>
+      <div class="profile-stat"><div class="profile-stat-val">${p.flock}</div><div class="profile-stat-label">flock</div></div>
+      <div class="profile-stat"><div class="profile-stat-val">${p.following}</div><div class="profile-stat-label">following</div></div>
+    </div>
+    <div class="profile-roosts-label">Roosts</div>
+    <div class="profile-roost-badges">${p.roosts.map(r=>`<span class="profile-roost-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block" aria-hidden="true"></span>${r}</span>`).join('')}</div>
+    ${who!=='you'?`<button class="nav-btn gold" style="width:100%;margin-top:20px;text-align:center" aria-label="Follow ${p.name}">+ Follow ${p.name}</button>`:`<button class="nav-btn" style="width:100%;margin-top:20px;text-align:center">Edit Profile</button>`}
+  `;
+  document.getElementById('profile-modal').classList.add('open');
+  document.querySelector('#profile-modal .modal-close').focus();
+}
+function closeProfileBg(e){if(e.target===document.getElementById('profile-modal'))closeProfileDirect()}
+function closeProfileDirect(){
+  document.getElementById('profile-modal').classList.remove('open');
+}
+
+/* ── LIVE CHAT ── */
+function openChatModal(title){
+  document.getElementById('chat-modal-title').textContent=title;
+  const msgs=CHAT_MSGS[title]||[];
+  document.getElementById('chat-messages').innerHTML=msgs.map(m=>`
+    <div class="chat-msg" role="article" aria-label="Message from @${m.from}">
+      <div class="chat-msg-av" style="background:${m.c}">${m.i}</div>
+      <div class="chat-msg-content">
+        <div class="chat-msg-author">@${m.from}</div>
+        <div class="chat-msg-text">${m.t}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('chat-modal').classList.add('open');
+  const el=document.getElementById('chat-messages');el.scrollTop=el.scrollHeight;
+  document.getElementById('chat-input').focus();
+}
+function closeChatBg(e){if(e.target===document.getElementById('chat-modal'))closeChatDirect()}
+function closeChatDirect(){document.getElementById('chat-modal').classList.remove('open')}
+function sendChat(){
+  const input=document.getElementById('chat-input');
+  const text=input.value.trim();if(!text)return;
+  const msgs=document.getElementById('chat-messages');
+  const div=document.createElement('div');
+  div.className='chat-msg mine';div.setAttribute('role','article');div.setAttribute('aria-label','Your message');
+  div.innerHTML=`<div class="chat-msg-av" style="background:rgba(200,146,10,0.3)" aria-hidden="true">JT</div><div class="chat-msg-content"><div class="chat-msg-author">@you</div><div class="chat-msg-text">${text}</div></div>`;
+  msgs.appendChild(div);input.value='';msgs.scrollTop=msgs.scrollHeight;
+}
+
+/* ── KEYBOARD NAV ── */
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    if(document.getElementById('profile-modal').classList.contains('open'))closeProfileDirect();
+    if(document.getElementById('chat-modal').classList.contains('open'))closeChatDirect();
+    if(document.getElementById('edit-profile-modal').classList.contains('open'))document.getElementById('edit-profile-modal').classList.remove('open');
+    document.getElementById('avatar-menu')?.remove();
+  }
+});
+
+/* ── AUTH HELPERS ── */
+function authTab(tab, btn){
+  document.querySelectorAll('.auth-tab').forEach(b=>{b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('auth-login').style.display = tab==='login'?'block':'none';
+  document.getElementById('auth-signup').style.display = tab==='signup'?'block':'none';
+}
+
+function setAuthLoading(btnId, loading){
+  const btn = document.getElementById(btnId);
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="loading-spinner"></span>Just a sec…' : (btnId==='login-btn'?'Sign In':'Join the Commons');
+}
+
+async function doLogin(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'Please fill in both fields.'; return; }
+  setAuthLoading('login-btn', true);
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  setAuthLoading('login-btn', false);
+  if(error){ errEl.textContent = error.message; return; }
+  onSignedIn(data.user);
+}
+
+async function doSignup(){
+  const name = document.getElementById('signup-name').value.trim();
+  const email = document.getElementById('signup-email').value.trim();
+  const role = document.getElementById('signup-role').value.trim();
+  const affiliation = document.getElementById('signup-affiliation').value.trim();
+  const password = document.getElementById('signup-password').value;
+  const errEl = document.getElementById('signup-error');
+  errEl.textContent = '';
+  if(!name || !email || !password){ errEl.textContent = 'Name, email and password are required.'; return; }
+  if(password.length < 8){ errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  setAuthLoading('signup-btn', true);
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if(error){ errEl.textContent = error.message; setAuthLoading('signup-btn', false); return; }
+  // Save profile
+  if(data.user){
+    await sb.from('profiles').upsert({
+      id: data.user.id,
+      full_name: name,
+      role: role || null,
+      affiliation: affiliation || null,
+    });
+  }
+  setAuthLoading('signup-btn', false);
+  errEl.style.color = 'var(--green-soft)';
+  errEl.textContent = 'Check your email to confirm your account, then sign in!';
+}
+
+async function doSignOut(){
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  updateNavForAuth(null);
+  document.getElementById('auth-overlay').style.display = 'flex';
+}
+
+async function onSignedIn(user){
+  currentUser = user;
+  document.getElementById('auth-overlay').style.display = 'none';
+  // Load profile
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  currentProfile = profile;
+  updateNavForAuth(user, profile);
+  await loadPosts();
+}
+
+function updateNavForAuth(user, profile){
+  const avatarBtn = document.querySelector('.user-avatar');
+  if(user && profile){
+    const initials = (profile.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    avatarBtn.textContent = initials;
+    avatarBtn.setAttribute('aria-label', `${profile.full_name} — your profile`);
+  } else {
+    avatarBtn.textContent = '?';
+    avatarBtn.onclick = () => { document.getElementById('auth-overlay').style.display='flex'; };
+  }
+}
+
+/* ── LIVE POSTS ── */
+async function loadPosts(){
+  console.log('Loading posts from Supabase...');
+
+  // Fetch posts first
+  const { data: posts, error: postsError } = await sb
+    .from('posts')
+    .select('id, user_id, content, type, created_at')
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if(postsError){ 
+    console.error('loadPosts error:', postsError); 
+    renderFeed('all'); 
+    return; 
+  }
+  if(!posts || posts.length === 0){ 
+    console.log('No posts in DB yet, showing seed data');
+    renderFeed('all'); 
+    return; 
+  }
+
+  console.log(`Got ${posts.length} posts from DB`);
+
+  // Fetch profiles separately to avoid join issues
+  const userIds = [...new Set(posts.map(p => p.user_id))];
+  const { data: profiles } = await sb
+    .from('profiles')
+    .select('id, full_name, role, affiliation')
+    .in('id', userIds);
+
+  const profileMap = {};
+  (profiles || []).forEach(p => profileMap[p.id] = p);
+
+  const realPosts = posts.map(p => {
+    const profile = profileMap[p.user_id] || {};
+    const name = profile.full_name || 'Anonymous';
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const affiliated = profile.affiliation ? ` · ⚑ Affiliated` : '';
+    return {
+      id: p.id,
+      type: p.type || 'shiny',
+      author: name,
+      handle: name.toLowerCase().replace(/\s/g,''),
+      role: (profile.role || 'Magpie member') + affiliated,
+      initials,
+      avBg: 'rgba(200,146,10,0.2)',
+      avColor: '#e8c060',
+      text: p.content,
+      shinies: 0,
+      time: timeAgo(p.created_at),
+      fromDB: true,
+    };
+  });
+
+  // Real posts first, seed posts after
+  const seedPosts = POSTS.filter(p => !p.fromDB);
+  POSTS.length = 0;
+  POSTS.push(...realPosts, ...seedPosts);
+  renderFeed('all');
+}
+
+  // Replace seed data with real posts, keeping seeds at the bottom
+  const realPosts = data.map(p => {
+    const profile = p.profiles || {};
+    const name = profile.full_name || 'Anonymous';
+    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const affiliated = profile.affiliation ? ` · ⚑ Affiliated` : '';
+    return {
+      id: p.id,
+      type: p.type,
+      author: name,
+      handle: name.toLowerCase().replace(/\s/g,''),
+      role: (profile.role || 'Magpie member') + affiliated,
+      initials,
+      avBg: 'rgba(200,146,10,0.2)',
+      avColor: '#e8c060',
+      text: p.content,
+      shinies: 0,
+      time: timeAgo(p.created_at),
+      fromDB: true,
+    };
+  });
+
+  // Put real posts first, seed posts after (marked so we can tell them apart)
+  const seedPosts = POSTS.filter(p => !p.fromDB);
+  POSTS.length = 0;
+  POSTS.push(...realPosts, ...seedPosts);
+  renderFeed('all');
+}
+
+async function savePost(text, type){
+  if(!currentUser){ announce('Sign in to post!'); return false; }
+  console.log('Saving post:', { user_id: currentUser.id, content: text, type });
+  const { data, error } = await sb.from('posts').insert({
+    user_id: currentUser.id,
+    content: text,
+    type: type,
+  }).select();
+  if(error){ 
+    console.error('savePost error:', error);
+    announce('Could not save post: ' + error.message); 
+    return false; 
+  }
+  console.log('Post saved:', data);
+  return true;
+}
+
+function timeAgo(ts){
+  const diff = (Date.now() - new Date(ts)) / 1000;
+  if(diff < 60) return 'just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+/* ── OVERRIDE submitPost to save to Supabase ── */
+const _originalSubmit = submitPost;
+submitPost = async function(){
+  const text = document.getElementById('compose-text').value.trim();
+  if(!text){ announce('Write something first!'); return; }
+  if(!selectedType){ announce('Choose a post type first.'); return; }
+  if(!currentUser){ announce('Sign in to post!'); document.getElementById('auth-overlay').style.display='flex'; return; }
+  const saved = await savePost(text, selectedType);
+  if(!saved) return;
+  // Optimistically add to feed
+  const name = currentProfile?.full_name || 'You';
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  POSTS.unshift({
+    id: Date.now(), type: selectedType,
+    author: name, handle: 'you',
+    role: currentProfile?.role || 'Magpie member',
+    initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
+    text, shinies:0, time:'just now'
+  });
+  renderFeed('all');
+  document.getElementById('compose-text').value='';
+  document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
+  selectedType=null;
+  document.getElementById('compose-hint').textContent='Choose a post type above';
+  document.getElementById('steal-form').classList.remove('show');
+  announce('Posted! ✦');
+};
+
+/* ── EDIT PROFILE ── */
+function openEditProfile(){
+  document.getElementById('ep-name').value = currentProfile?.full_name || '';
+  document.getElementById('ep-role').value = currentProfile?.role || '';
+  document.getElementById('ep-affiliation').value = currentProfile?.affiliation || '';
+  document.getElementById('ep-bio').value = currentProfile?.bio || '';
+  document.getElementById('ep-error').textContent = '';
+  document.getElementById('edit-profile-modal').classList.add('open');
+}
+
+async function saveProfile(){
+  const btn = document.getElementById('ep-save-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-spinner"></span>Saving…';
+  const updates = {
+    id: currentUser.id,
+    full_name: document.getElementById('ep-name').value.trim(),
+    role: document.getElementById('ep-role').value.trim(),
+    affiliation: document.getElementById('ep-affiliation').value.trim(),
+    bio: document.getElementById('ep-bio').value.trim(),
+  };
+  const { error } = await sb.from('profiles').upsert(updates);
+  btn.disabled = false;
+  btn.textContent = 'Save Profile';
+  if(error){
+    document.getElementById('ep-error').textContent = error.message;
+    return;
+  }
+  currentProfile = { ...currentProfile, ...updates };
+  updateNavForAuth(currentUser, currentProfile);
+  document.getElementById('edit-profile-modal').classList.remove('open');
+  announce('Profile saved! ✦');
+}
+
+/* ── AVATAR MENU ── */
+function toggleAvatarMenu(){
+  let menu = document.getElementById('avatar-menu');
+  if(menu){ menu.remove(); return; }
+  menu = document.createElement('div');
+  menu.id = 'avatar-menu';
+  menu.style.cssText = 'position:absolute;top:58px;right:20px;background:var(--surface-3);border:1px solid var(--chalk-15);border-radius:var(--radius);padding:8px;min-width:180px;z-index:300;box-shadow:0 8px 32px rgba(0,0,0,.4)';
+  const name = currentProfile?.full_name || 'Your Account';
+  const role = currentProfile?.role || '';
+  menu.innerHTML = `
+    <div style="padding:8px 10px 12px;border-bottom:1px solid var(--chalk-08);margin-bottom:6px">
+      <div style="font-size:13px;font-weight:600;color:var(--chalk)">${name}</div>
+      <div style="font-size:11px;color:var(--chalk-40);margin-top:2px">${role}</div>
+    </div>
+    <button onclick="openEditProfile();document.getElementById('avatar-menu')?.remove()" style="display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:none;background:transparent;color:var(--chalk-70);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer" onmouseover="this.style.background='var(--chalk-08)'" onmouseout="this.style.background='transparent'">✏️ Edit Profile</button>
+    <button onclick="doSignOut();document.getElementById('avatar-menu')?.remove()" style="display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:none;background:transparent;color:var(--red-soft);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer" onmouseover="this.style.background='var(--chalk-08)'" onmouseout="this.style.background='transparent'">→ Sign Out</button>
+  `;
+  document.querySelector('.topnav').style.position = 'relative';
+  document.querySelector('.topnav').appendChild(menu);
+  setTimeout(()=>document.addEventListener('click', function closeMenu(e){
+    if(!menu.contains(e.target) && e.target !== document.querySelector('.user-avatar')){
+      menu.remove(); document.removeEventListener('click', closeMenu);
+    }
+  }), 10);
+}
+
+/* ── INIT ── */
+async function init(){
+  // Copy logo into auth modal
+  const navLogo = document.querySelector('.logo-wrap img');
+  if(navLogo) document.getElementById('auth-logo-img').src = navLogo.src;
+
+  // Check for existing session
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    onSignedIn(session.user);
+  } else {
+    document.getElementById('auth-overlay').style.display = 'flex';
+    renderFeed('all'); // show seed posts while logged out
+  }
+
+  // Listen for auth changes
+  sb.auth.onAuthStateChange((event, session) => {
+    if(event === 'SIGNED_IN' && session) onSignedIn(session.user);
+    if(event === 'SIGNED_OUT'){ document.getElementById('auth-overlay').style.display='flex'; }
+  });
+}
+
+init();
+</script>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="edit-profile-modal" role="dialog" aria-modal="true" aria-label="Edit Profile" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box" style="width:460px">
+    <button class="modal-close" onclick="document.getElementById('edit-profile-modal').classList.remove('open')" aria-label="Close">✕</button>
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:var(--chalk);margin-bottom:20px">Edit Profile</div>
+    <div class="auth-field">
+      <label class="auth-label" for="ep-name">Full Name</label>
+      <input class="auth-input" id="ep-name" type="text" placeholder="Your name"/>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="ep-role">Your Role</label>
+      <input class="auth-input" id="ep-role" type="text" placeholder="e.g. ELA Teacher · 8th Grade · Jefferson Middle"/>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="ep-affiliation">Affiliation <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--chalk-40)">(optional)</span></label>
+      <input class="auth-input" id="ep-affiliation" type="text" placeholder="e.g. I work at Wayground EdTech"/>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="ep-bio">Bio <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--chalk-40)">(optional)</span></label>
+      <textarea class="auth-input" id="ep-bio" rows="3" placeholder="A little about you…" style="resize:none"></textarea>
+    </div>
+    <button class="auth-btn" onclick="saveProfile()" id="ep-save-btn">Save Profile</button>
+    <div class="auth-error" id="ep-error" aria-live="polite"></div>
+  </div>
+</div>
+<div class="auth-overlay" id="auth-overlay" role="dialog" aria-modal="true" aria-label="Sign in to Magpie">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <img id="auth-logo-img" src="data:image/png;base64,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" style="width:42px;height:42px;object-fit:contain" alt="Magpie">
+      <div>
+        <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--chalk);line-height:1">Magpie</div>
+        <div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--chalk-40);margin-top:2px">the educator commons</div>
+      </div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authTab('login',this)">Sign In</button>
+      <button class="auth-tab" onclick="authTab('signup',this)">Create Account</button>
+    </div>
+
+    <!-- LOGIN -->
+    <div id="auth-login">
+      <div class="auth-field">
+        <label class="auth-label" for="login-email">Email</label>
+        <input class="auth-input" id="login-email" type="email" placeholder="you@school.edu" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="login-password">Password</label>
+        <input class="auth-input" id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+      </div>
+      <button class="auth-btn" onclick="doLogin()" id="login-btn">Sign In</button>
+      <div class="auth-error" id="login-error" aria-live="polite"></div>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="auth-signup" style="display:none">
+      <div class="auth-field">
+        <label class="auth-label" for="signup-name">Full Name</label>
+        <input class="auth-input" id="signup-name" type="text" placeholder="Ms. Garcia" autocomplete="name"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="signup-email">Email</label>
+        <input class="auth-input" id="signup-email" type="email" placeholder="you@school.edu" autocomplete="email"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="signup-role">Your Role</label>
+        <input class="auth-input" id="signup-role" type="text" placeholder="e.g. ELA Teacher · 8th Grade · Jefferson Middle"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="signup-affiliation">Affiliation <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--chalk-40)">(optional — disclose if vendor/org)</span></label>
+        <input class="auth-input" id="signup-affiliation" type="text" placeholder="e.g. I work at Wayground EdTech"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="signup-password">Password</label>
+        <input class="auth-input" id="signup-password" type="password" placeholder="8+ characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')doSignup()"/>
+      </div>
+      <button class="auth-btn" onclick="doSignup()" id="signup-btn">Join the Commons</button>
+      <div class="auth-error" id="signup-error" aria-live="polite"></div>
+      <div class="auth-note">By joining you agree to the Magpie community norms.<br>Practitioners welcome. Promoters are not.</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
