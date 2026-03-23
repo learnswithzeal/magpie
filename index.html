@@ -1427,34 +1427,7 @@ async function loadPosts(){
   renderFeed('all');
 }
 
-  // Replace seed data with real posts, keeping seeds at the bottom
-  const realPosts = data.map(p => {
-    const profile = p.profiles || {};
-    const name = profile.full_name || 'Anonymous';
-    const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const affiliated = profile.affiliation ? ` · ⚑ Affiliated` : '';
-    return {
-      id: p.id,
-      type: p.type,
-      author: name,
-      handle: name.toLowerCase().replace(/\s/g,''),
-      role: (profile.role || 'Magpie member') + affiliated,
-      initials,
-      avBg: 'rgba(200,146,10,0.2)',
-      avColor: '#e8c060',
-      text: p.content,
-      shinies: 0,
-      time: timeAgo(p.created_at),
-      fromDB: true,
-    };
-  });
 
-  // Put real posts first, seed posts after (marked so we can tell them apart)
-  const seedPosts = POSTS.filter(p => !p.fromDB);
-  POSTS.length = 0;
-  POSTS.push(...realPosts, ...seedPosts);
-  renderFeed('all');
-}
 
 async function savePost(text, type){
   if(!currentUser){ announce('Sign in to post!'); return false; }
