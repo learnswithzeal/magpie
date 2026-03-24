@@ -1006,13 +1006,14 @@ function renderFeed(filter){
     <article class="post-card" data-id="${p.id}" data-type="${p.type}" role="article" aria-label="Post by ${p.author}">
       <div class="post-header">
         <button class="post-avatar-btn" style="background:${p.avBg};color:${p.avColor}"
-          onclick="openProfile('${p.handle}')"
+          onclick="openProfile('${p.userId||''}','${p.author}','${p.role}','${p.initials}')"
           aria-label="View ${p.author}'s profile">${p.initials}</button>
         <div class="post-meta">
           <div class="post-author">${p.author}</div>
           <div class="post-byline">${p.role} · ${p.time}${p.roost?` · <span style="color:var(--chalk-40)">⬡ ${p.roost}</span>`:''}</div>
         </div>
         <div class="post-type-badge ${TYPE_BADGE[p.type]}" aria-label="Post type: ${TYPE_LABEL[p.type]}">${TYPE_LABEL[p.type]}</div>
+        ${p.userId && p.userId === currentUser?.id ? `<button class="post-action" onclick="deletePost('${p.id}',this)" aria-label="Delete your post" style="color:var(--red-soft);margin-left:4px" title="Delete post">🗑</button>` : ''}
       </div>
       <div class="post-text">${p.text}</div>
       ${p.steal?`
@@ -1208,25 +1209,36 @@ function switchNav(btn,view){
 }
 
 /* ── PROFILES ── */
-function openProfile(who){
-  const p=PROFILES[who]||PROFILES.mrsguerrero;
+async function openProfile(userId, authorName, authorRole, authorInitials){
+  // If it's the current user, open edit profile instead
+  if(userId === currentUser?.id){
+    openEditProfile();
+    return;
+  }
+
+  // Show a basic profile using the data we already have on the post
+  // In future this can be expanded to fetch full profile from DB
+  const name = authorName || 'Magpie Member';
+  const initials = authorInitials || name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const role = authorRole || 'Magpie member';
+
+  // Count their posts
+  const theirPosts = POSTS.filter(p => p.userId === userId);
+
   document.getElementById('profile-content').innerHTML=`
     <div class="profile-header">
-      <div class="profile-avatar-lg" style="background:${p.avBg};color:${p.avColor}" id="profile-modal-name" aria-label="${p.name}'s avatar">${p.initials}</div>
+      <div class="profile-avatar-lg" style="background:rgba(200,146,10,0.2);color:#e8c060" id="profile-modal-name" aria-label="${name}'s avatar">${initials}</div>
       <div>
-        <div class="profile-name">${p.name}</div>
-        <div class="profile-role">${p.role}</div>
-        <div class="profile-tags">${p.tags.map(t=>`<span class="profile-tag">${t}</span>`).join('')}</div>
+        <div class="profile-name">${name}</div>
+        <div class="profile-role">${role}</div>
       </div>
     </div>
     <div class="profile-stats">
-      <div class="profile-stat"><div class="profile-stat-val">${p.posts}</div><div class="profile-stat-label">posts</div></div>
-      <div class="profile-stat"><div class="profile-stat-val">${p.flock}</div><div class="profile-stat-label">flock</div></div>
-      <div class="profile-stat"><div class="profile-stat-val">${p.following}</div><div class="profile-stat-label">following</div></div>
+      <div class="profile-stat"><div class="profile-stat-val">${theirPosts.length}</div><div class="profile-stat-label">posts</div></div>
+      <div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-label">flock</div></div>
+      <div class="profile-stat"><div class="profile-stat-val">—</div><div class="profile-stat-label">following</div></div>
     </div>
-    <div class="profile-roosts-label">Roosts</div>
-    <div class="profile-roost-badges">${p.roosts.map(r=>`<span class="profile-roost-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--gold);display:inline-block" aria-hidden="true"></span>${r}</span>`).join('')}</div>
-    ${who!=='you'?`<button class="nav-btn gold" style="width:100%;margin-top:20px;text-align:center" aria-label="Follow ${p.name}">+ Follow ${p.name}</button>`:`<button class="nav-btn" style="width:100%;margin-top:20px;text-align:center">Edit Profile</button>`}
+    <button class="nav-btn gold" style="width:100%;margin-top:20px;text-align:center" aria-label="Follow ${name}">+ Follow ${name}</button>
   `;
   document.getElementById('profile-modal').classList.add('open');
   document.querySelector('#profile-modal .modal-close').focus();
@@ -1410,6 +1422,7 @@ async function loadPosts(){
       shinies: 0,
       time: timeAgo(p.created_at),
       fromDB: true,
+      userId: p.user_id,
       steal: (p.type === 'steal' && (p.steal_what || p.steal_grade)) ? {
         grade: p.steal_grade || '',
         subject: p.steal_subject || '',
@@ -1489,7 +1502,8 @@ submitPost = async function(){
     author: name, handle: 'you',
     role: currentProfile?.role || 'Magpie member',
     initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
-    text: postText, shinies:0, time:'just now', steal: stealData
+    text: postText, shinies:0, time:'just now', steal: stealData,
+    userId: currentUser.id,
   });
   renderFeed('all');
   document.getElementById('compose-text').value='';
@@ -1566,7 +1580,25 @@ function toggleAvatarMenu(){
   }), 10);
 }
 
-/* ── SEARCH ── */
+/* ── DELETE POST ── */
+async function deletePost(id, btn){
+  if(!currentUser) return;
+  if(!confirm('Delete this post? This cannot be undone.')) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  const { error } = await sb.from('posts').delete().eq('id', id).eq('user_id', currentUser.id);
+  if(error){
+    announce('Could not delete post: ' + error.message);
+    btn.disabled = false;
+    btn.textContent = '🗑';
+    return;
+  }
+  // Remove from local array and re-render
+  const idx = POSTS.findIndex(p => p.id == id);
+  if(idx > -1) POSTS.splice(idx, 1);
+  renderFeed('all');
+  announce('Post deleted.');
+}
 function doSearch(query){
   if(!query.trim()){ renderFeed('all'); return; }
   const q = query.toLowerCase();
