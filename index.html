@@ -768,10 +768,11 @@ body{
 
           <div class="steal-form" id="steal-form" aria-label="Steal This fields">
             <div class="steal-grid">
-              <div><div class="steal-label">Grade</div><input class="steal-input" placeholder="e.g. 7th"/></div>
-              <div><div class="steal-label">Subject</div><input class="steal-input" placeholder="e.g. ELA"/></div>
-              <div><div class="steal-label">Time needed</div><input class="steal-input" placeholder="e.g. 20 min"/></div>
-              <div class="steal-full"><div class="steal-label">Why it worked</div><input class="steal-input" placeholder="The magic ingredient…"/></div>
+              <div><div class="steal-label">Grade</div><input class="steal-input" id="steal-grade" placeholder="e.g. 7th"/></div>
+              <div><div class="steal-label">Subject</div><input class="steal-input" id="steal-subject" placeholder="e.g. ELA"/></div>
+              <div><div class="steal-label">Time needed</div><input class="steal-input" id="steal-time" placeholder="e.g. 20 min"/></div>
+              <div class="steal-full"><div class="steal-label">The strategy — what do they actually do?</div><textarea class="steal-input" id="steal-what" rows="3" placeholder="Step by step: first you… then students… finally…" style="resize:none"></textarea></div>
+              <div class="steal-full"><div class="steal-label">Why it worked</div><input class="steal-input" id="steal-why" placeholder="The magic ingredient…"/></div>
             </div>
           </div>
 
@@ -1016,10 +1017,11 @@ function renderFeed(filter){
       <div class="post-text">${p.text}</div>
       ${p.steal?`
         <div class="steal-card">
-          <div><div class="steal-meta-label">Grade</div><div class="steal-meta-val">${p.steal.grade}</div></div>
-          <div><div class="steal-meta-label">Subject</div><div class="steal-meta-val">${p.steal.subject}</div></div>
-          <div><div class="steal-meta-label">Time</div><div class="steal-meta-val">${p.steal.time}</div></div>
-          <div class="steal-full"><div class="steal-meta-label">Why it worked</div><div class="steal-what">${p.steal.why}</div></div>
+          <div><div class="steal-meta-label">Grade</div><div class="steal-meta-val">${p.steal.grade||'—'}</div></div>
+          <div><div class="steal-meta-label">Subject</div><div class="steal-meta-val">${p.steal.subject||'—'}</div></div>
+          <div><div class="steal-meta-label">Time</div><div class="steal-meta-val">${p.steal.time||'—'}</div></div>
+          ${p.steal.what?`<div class="steal-full"><div class="steal-meta-label">The Strategy</div><div class="steal-what">${p.steal.what}</div></div>`:''}
+          ${p.steal.why?`<div class="steal-full"><div class="steal-meta-label">Why it worked</div><div class="steal-what" style="opacity:.8">${p.steal.why}</div></div>`:''}
         </div>`:''}
       <div class="post-footer">
         <button class="post-action ${shiniedIds.has(p.id)?'shinied':''}"
@@ -1156,25 +1158,8 @@ function selectType(type,btn){
   document.getElementById('steal-form').classList.toggle('show',type==='steal');
 }
 
-function submitPost(){
-  const text=document.getElementById('compose-text').value.trim();
-  if(!text){announce('Write something first!');return;}
-  if(!selectedType){announce('Choose a post type first.');return;}
-  const newPost={
-    id:Date.now(),type:selectedType,
-    author:'Jamie Thompson',handle:'you',role:'ELA · 9th Grade · Central High',
-    initials:'JT',avBg:'rgba(200,146,10,0.25)',avColor:'#e8c060',
-    text,shinies:0,time:'Just now'
-  };
-  POSTS.unshift(newPost);
-  renderFeed('all');
-  document.getElementById('compose-text').value='';
-  document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
-  selectedType=null;
-  document.getElementById('compose-hint').textContent='Choose a post type above';
-  document.getElementById('steal-form').classList.remove('show');
-  announce('Posted! ✦');
-}
+// submitPost is defined below after Supabase is set up
+let submitPost = function(){ announce('Loading…'); };
 
 function triggerFile(type){document.getElementById('file-'+type).click()}
 function handleImg(e){
@@ -1372,7 +1357,7 @@ async function loadPosts(){
   // Fetch posts first
   const { data: posts, error: postsError } = await sb
     .from('posts')
-    .select('id, user_id, content, type, created_at')
+    .select('id, user_id, content, type, created_at, steal_grade, steal_subject, steal_time, steal_what, steal_why')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -1417,6 +1402,13 @@ async function loadPosts(){
       shinies: 0,
       time: timeAgo(p.created_at),
       fromDB: true,
+      steal: (p.type === 'steal' && (p.steal_what || p.steal_grade)) ? {
+        grade: p.steal_grade || '',
+        subject: p.steal_subject || '',
+        time: p.steal_time || '',
+        what: p.steal_what || '',
+        why: p.steal_why || '',
+      } : null,
     };
   });
 
@@ -1431,12 +1423,21 @@ async function loadPosts(){
 
 async function savePost(text, type){
   if(!currentUser){ announce('Sign in to post!'); return false; }
-  console.log('Saving post:', { user_id: currentUser.id, content: text, type });
-  const { data, error } = await sb.from('posts').insert({
+  const row = {
     user_id: currentUser.id,
     content: text,
     type: type,
-  }).select();
+  };
+  // Add steal fields if applicable
+  if(type === 'steal'){
+    row.steal_grade   = document.getElementById('steal-grade').value.trim();
+    row.steal_subject = document.getElementById('steal-subject').value.trim();
+    row.steal_time    = document.getElementById('steal-time').value.trim();
+    row.steal_what    = document.getElementById('steal-what').value.trim();
+    row.steal_why     = document.getElementById('steal-why').value.trim();
+  }
+  console.log('Saving post:', row);
+  const { data, error } = await sb.from('posts').insert(row).select();
   if(error){ 
     console.error('savePost error:', error);
     announce('Could not save post: ' + error.message); 
@@ -1455,7 +1456,6 @@ function timeAgo(ts){
 }
 
 /* ── OVERRIDE submitPost to save to Supabase ── */
-const _originalSubmit = submitPost;
 submitPost = async function(){
   const text = document.getElementById('compose-text').value.trim();
   if(!text){ announce('Write something first!'); return; }
@@ -1463,15 +1463,21 @@ submitPost = async function(){
   if(!currentUser){ announce('Sign in to post!'); document.getElementById('auth-overlay').style.display='flex'; return; }
   const saved = await savePost(text, selectedType);
   if(!saved) return;
-  // Optimistically add to feed
   const name = currentProfile?.full_name || 'You';
   const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const stealData = selectedType === 'steal' ? {
+    grade: document.getElementById('steal-grade').value.trim(),
+    subject: document.getElementById('steal-subject').value.trim(),
+    time: document.getElementById('steal-time').value.trim(),
+    what: document.getElementById('steal-what').value.trim(),
+    why: document.getElementById('steal-why').value.trim(),
+  } : null;
   POSTS.unshift({
     id: Date.now(), type: selectedType,
     author: name, handle: 'you',
     role: currentProfile?.role || 'Magpie member',
     initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
-    text, shinies:0, time:'just now'
+    text, shinies:0, time:'just now', steal: stealData
   });
   renderFeed('all');
   document.getElementById('compose-text').value='';
@@ -1479,6 +1485,12 @@ submitPost = async function(){
   selectedType=null;
   document.getElementById('compose-hint').textContent='Choose a post type above';
   document.getElementById('steal-form').classList.remove('show');
+  if(stealData){
+    ['steal-grade','steal-subject','steal-time','steal-what','steal-why'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.value='';
+    });
+  }
   announce('Posted! ✦');
 };
 
@@ -1542,23 +1554,58 @@ function toggleAvatarMenu(){
   }), 10);
 }
 
+/* ── SEARCH ── */
+function doSearch(query){
+  if(!query.trim()){ renderFeed('all'); return; }
+  const q = query.toLowerCase();
+  const results = POSTS.filter(p =>
+    p.text?.toLowerCase().includes(q) ||
+    p.author?.toLowerCase().includes(q) ||
+    p.role?.toLowerCase().includes(q) ||
+    p.steal?.what?.toLowerCase().includes(q) ||
+    p.steal?.why?.toLowerCase().includes(q) ||
+    p.type?.toLowerCase().includes(q)
+  );
+  const feed = document.getElementById('feed-posts');
+  if(!results.length){
+    feed.innerHTML = `<div style="text-align:center;padding:40px;color:var(--chalk-40);font-size:14px">No posts matching "<strong style="color:var(--chalk)">${query}</strong>"</div>`;
+    return;
+  }
+  const saved = [...POSTS];
+  POSTS.length = 0;
+  POSTS.push(...results);
+  renderFeed('all');
+  POSTS.length = 0;
+  POSTS.push(...saved);
+  announce(`${results.length} result${results.length===1?'':'s'} for "${query}"`);
+  switchNav(document.querySelector('.nav-item'), 'feed');
+}
+
 /* ── INIT ── */
 async function init(){
-
-  // Check for existing session
+  // Check for existing session — persists across refreshes
   const { data: { session } } = await sb.auth.getSession();
   if(session){
-    onSignedIn(session.user);
+    await onSignedIn(session.user);
   } else {
     document.getElementById('auth-overlay').style.display = 'flex';
-    renderFeed('all'); // show seed posts while logged out
+    renderFeed('all');
   }
 
-  // Listen for auth changes
-  sb.auth.onAuthStateChange((event, session) => {
-    if(event === 'SIGNED_IN' && session) onSignedIn(session.user);
-    if(event === 'SIGNED_OUT'){ document.getElementById('auth-overlay').style.display='flex'; }
+  // Listen for future auth changes
+  sb.auth.onAuthStateChange(async (event, session) => {
+    if(event === 'SIGNED_IN' && session) await onSignedIn(session.user);
+    if(event === 'SIGNED_OUT') document.getElementById('auth-overlay').style.display = 'flex';
   });
+
+  // Wire up search — press Enter to search, Escape to clear
+  const searchInput = document.querySelector('.topnav-search');
+  if(searchInput){
+    searchInput.addEventListener('keydown', e => {
+      if(e.key === 'Enter') doSearch(searchInput.value);
+      if(e.key === 'Escape'){ searchInput.value=''; renderFeed('all'); }
+    });
+  }
 }
 
 init();
