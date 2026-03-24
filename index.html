@@ -759,12 +759,18 @@ body{
           <div class="attach-row" role="group" aria-label="Attach media">
             <button class="attach-btn" onclick="triggerFile('img')" aria-label="Attach image">🖼 Photo</button>
             <button class="attach-btn" onclick="triggerFile('pdf')" aria-label="Attach document">📄 Doc</button>
-            <button class="attach-btn" onclick="addLink()" aria-label="Add link">🔗 Link</button>
+            <button class="attach-btn" onclick="showLinkInput()" aria-label="Add link">🔗 Link</button>
           </div>
-          <input type="file" id="file-img" class="hidden-file" accept="image/*" multiple onchange="handleImg(event)">
-          <input type="file" id="file-pdf" class="hidden-file" accept=".pdf,.doc,.docx" onchange="handleDoc(event)">
+          <input type="file" id="file-img" class="hidden-file" accept="image/jpeg,image/png,image/gif,image/webp" onchange="handleImg(event)">
+          <input type="file" id="file-pdf" class="hidden-file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onchange="handleDoc(event)">
           <div class="media-preview" id="media-preview"></div>
           <div id="link-preview-area"></div>
+          <div id="upload-progress" style="display:none;margin-top:8px">
+            <div style="height:3px;background:var(--chalk-08);border-radius:2px;overflow:hidden">
+              <div id="upload-bar" style="height:100%;background:var(--gold);width:0%;transition:width .3s"></div>
+            </div>
+            <div id="upload-status" style="font-size:11px;color:var(--chalk-40);margin-top:4px"></div>
+          </div>
 
           <div class="steal-form" id="steal-form" aria-label="Steal This fields">
             <div class="steal-grid">
@@ -1016,6 +1022,10 @@ function renderFeed(filter){
         ${p.userId && p.userId === currentUser?.id ? `<button class="post-action" onclick="deletePost('${p.id}',this)" aria-label="Delete your post" style="color:var(--red-soft);margin-left:4px" title="Delete post">🗑</button>` : ''}
       </div>
       <div class="post-text">${p.text}</div>
+      ${p.imageUrl?`<div style="margin-top:12px;border-radius:var(--radius-sm);overflow:hidden;max-height:360px"><img src="${p.imageUrl}" alt="Post image" style="width:100%;object-fit:cover;display:block" loading="lazy"></div>`:''}
+      ${p.docUrl?`<a href="${p.docUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;text-decoration:none"><span style="font-size:20px">📄</span><div><div style="font-size:13px;font-weight:500;color:var(--chalk)">${p.docName||'Document'}</div><div style="font-size:11px;color:var(--chalk-40)">Click to open</div></div></a>`:''}
+      ${p.linkUrl?`<a href="${p.linkUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;text-decoration:none"><span style="font-size:20px">🔗</span><div><div style="font-size:13px;font-weight:500;color:var(--chalk)">${p.linkTitle||'Link'}</div><div style="font-size:11px;color:var(--chalk-40);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px">${p.linkUrl}</div></div></a>`:''}
+      ${p.repost?`<div style="margin-top:10px;border-left:3px solid var(--gold);border-radius:var(--radius-sm);padding:10px 12px;background:var(--chalk-05)"><div style="font-size:11px;color:var(--chalk-40);margin-bottom:4px">↗ ${p.repost.author}</div><div style="font-size:13px;color:var(--chalk-70);line-height:1.5">${p.repost.text||''}</div></div>`:''}
       ${p.steal?`
         <div class="steal-card">
           <div><div class="steal-meta-label">Grade</div><div class="steal-meta-val">${p.steal.grade||'—'}</div></div>
@@ -1038,7 +1048,7 @@ function renderFeed(filter){
           🪺 ${collectedIds.has(p.id)?'Collected':'Collect This'}
         </button>
         <div class="post-spacer"></div>
-        <button class="post-action" aria-label="Share this post">↗ Drop in Roost</button>
+        <button class="post-action" onclick="openRepost('${p.id}')" aria-label="Share this post">↗ Share</button>
       </div>
     </article>`).join('');
 }
@@ -1170,24 +1180,160 @@ function selectType(type,btn){
 // submitPost is defined below after Supabase is set up
 let submitPost = function(){ announce('Loading…'); };
 
-function triggerFile(type){document.getElementById('file-'+type).click()}
-function handleImg(e){
-  const prev=document.getElementById('media-preview');
-  Array.from(e.target.files).forEach(f=>{
-    const url=URL.createObjectURL(f);
-    const div=document.createElement('div');div.className='media-thumb';
-    div.innerHTML=`<img src="${url}" alt="${f.name}"><button class="media-rm" aria-label="Remove image" onclick="this.parentElement.remove()">✕</button>`;
-    prev.appendChild(div);
-  });
+/* ── MEDIA UPLOAD ── */
+let pendingImageFile = null;
+let pendingDocFile = null;
+let pendingLinkUrl = null;
+
+function triggerFile(type){ document.getElementById('file-'+type).click(); }
+
+function setUploadProgress(pct, msg){
+  const bar = document.getElementById('upload-bar');
+  const status = document.getElementById('upload-status');
+  const wrap = document.getElementById('upload-progress');
+  if(pct === null){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  bar.style.width = pct+'%';
+  status.textContent = msg;
 }
-function handleDoc(e){const f=e.target.files[0];if(!f)return;announce(`📄 ${f.name} attached`)}
-function addLink(){
-  const url=prompt('Paste a URL:');
-  if(!url)return;
-  const area=document.getElementById('link-preview-area');
-  try{const host=new URL(url).hostname;
-    area.innerHTML=`<div style="margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;display:flex;gap:10px;align-items:center"><div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--chalk)">${host}</div><div style="font-size:11px;color:var(--chalk-40);margin-top:2px">${url}</div></div><button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px" onclick="this.closest('[style]').remove()" aria-label="Remove link">✕</button></div>`;}
-  catch{}
+
+function handleImg(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  if(f.size > 5 * 1024 * 1024){ announce('Image must be under 5MB'); return; }
+  const allowed = ['image/jpeg','image/png','image/gif','image/webp'];
+  if(!allowed.includes(f.type)){ announce('Please use JPG, PNG, GIF or WebP'); return; }
+  pendingImageFile = f;
+  const prev = document.getElementById('media-preview');
+  const url = URL.createObjectURL(f);
+  prev.innerHTML = `
+    <div class="media-thumb">
+      <img src="${url}" alt="${f.name}">
+      <button class="media-rm" aria-label="Remove image" onclick="pendingImageFile=null;this.parentElement.remove()">✕</button>
+    </div>
+    <span style="font-size:11px;color:var(--chalk-40);align-self:center">${f.name} · ${(f.size/1024).toFixed(0)}KB</span>`;
+  e.target.value='';
+}
+
+function handleDoc(e){
+  const f = e.target.files[0];
+  if(!f) return;
+  if(f.size > 10 * 1024 * 1024){ announce('Document must be under 10MB'); return; }
+  pendingDocFile = f;
+  document.getElementById('media-preview').innerHTML += `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:8px 12px;margin-top:8px">
+      <span style="font-size:18px">📄</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:var(--chalk);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.name}</div>
+        <div style="font-size:11px;color:var(--chalk-40)">${(f.size/1024).toFixed(0)}KB</div>
+      </div>
+      <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px" onclick="pendingDocFile=null;this.closest('div').remove()" aria-label="Remove doc">✕</button>
+    </div>`;
+  e.target.value='';
+}
+
+function showLinkInput(){
+  const area = document.getElementById('link-preview-area');
+  if(area.querySelector('input')) return;
+  area.innerHTML = `
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+      <input id="link-url-input" class="auth-input" type="url" placeholder="https://…" style="flex:1;padding:9px 12px"
+        onkeydown="if(event.key==='Enter')confirmLink()"/>
+      <button class="nav-btn gold" onclick="confirmLink()" style="flex-shrink:0">Add</button>
+      <button class="nav-btn" onclick="document.getElementById('link-preview-area').innerHTML='';pendingLinkUrl=null" style="flex-shrink:0">✕</button>
+    </div>`;
+  document.getElementById('link-url-input').focus();
+}
+
+function confirmLink(){
+  const input = document.getElementById('link-url-input');
+  const url = input?.value.trim();
+  if(!url) return;
+  try{
+    const host = new URL(url).hostname;
+    pendingLinkUrl = url;
+    document.getElementById('link-preview-area').innerHTML = `
+      <div style="margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;display:flex;gap:10px;align-items:center">
+        <span style="font-size:18px">🔗</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:500;color:var(--chalk)">${host}</div>
+          <div style="font-size:11px;color:var(--chalk-40);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${url}</div>
+        </div>
+        <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px" onclick="pendingLinkUrl=null;this.closest('div').remove()" aria-label="Remove link">✕</button>
+      </div>`;
+  } catch(e){ announce('Please enter a valid URL starting with https://'); }
+}
+
+async function uploadFile(file, folder){
+  const ext = file.name.split('.').pop();
+  const path = `${folder}/${currentUser.id}/${Date.now()}.${ext}`;
+  setUploadProgress(30, `Uploading ${file.name}…`);
+  const { data, error } = await sb.storage.from('posts').upload(path, file, { upsert: false });
+  if(error){ setUploadProgress(null,''); throw error; }
+  setUploadProgress(80, 'Processing…');
+  const { data: { publicUrl } } = sb.storage.from('posts').getPublicUrl(path);
+  setUploadProgress(100, 'Done!');
+  setTimeout(()=>setUploadProgress(null,''), 800);
+  return publicUrl;
+}
+
+/* ── REPOST ── */
+let currentRepostData = null;
+let selectedRepostType = 'shiny';
+
+function setRepostType(type, btn){
+  selectedRepostType = type;
+  document.querySelectorAll('#repost-type-pills .type-pill').forEach(b=>b.classList.remove('sel'));
+  btn.classList.add('sel');
+}
+
+function openRepost(postId){
+  const p = POSTS.find(x => x.id == postId);
+  if(!p) return;
+  currentRepostData = p;
+  selectedRepostType = 'shiny';
+  document.querySelectorAll('#repost-type-pills .type-pill').forEach((b,i)=>{b.classList.toggle('sel',i===0)});
+  document.getElementById('repost-comment').value = '';
+  document.getElementById('repost-error').textContent = '';
+  document.getElementById('repost-preview').innerHTML = `
+    <div style="font-size:11px;color:var(--chalk-40);margin-bottom:6px">↗ ${p.author} · ${TYPE_LABEL[p.type]||p.type}</div>
+    <div style="color:var(--chalk-70)">${p.text?.slice(0,200)}${p.text?.length>200?'…':''}</div>`;
+  document.getElementById('repost-modal').classList.add('open');
+}
+
+async function submitRepost(){
+  if(!currentUser){ announce('Sign in to repost!'); return; }
+  if(!currentRepostData) return;
+  const comment = document.getElementById('repost-comment').value.trim();
+  const postText = comment || `↗ Sharing this from ${currentRepostData.author}`;
+  const errEl = document.getElementById('repost-error');
+  errEl.textContent = '';
+
+  const { error } = await sb.from('posts').insert({
+    user_id: currentUser.id,
+    content: postText,
+    type: selectedRepostType,
+    repost_of: currentRepostData.fromDB ? currentRepostData.id : null,
+    repost_author: currentRepostData.author,
+    repost_text: currentRepostData.text?.slice(0,300),
+  });
+
+  if(error){ errEl.textContent = error.message; return; }
+
+  const name = currentProfile?.full_name || 'You';
+  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  POSTS.unshift({
+    id: Date.now(), type: selectedRepostType,
+    author: name, handle: 'you',
+    role: currentProfile?.role || 'Magpie member',
+    initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
+    text: postText, shinies:0, time:'just now',
+    userId: currentUser.id,
+    repost: { author: currentRepostData.author, text: currentRepostData.text?.slice(0,200) }
+  });
+  renderFeed('all');
+  document.getElementById('repost-modal').classList.remove('open');
+  announce('Shared! ↗');
 }
 
 /* ── NAVIGATION ── */
@@ -1377,7 +1523,7 @@ async function loadPosts(){
   // Fetch posts first
   const { data: posts, error: postsError } = await sb
     .from('posts')
-    .select('id, user_id, content, type, created_at, steal_grade, steal_subject, steal_time, steal_what, steal_why')
+    .select('id, user_id, content, type, created_at, steal_grade, steal_subject, steal_time, steal_what, steal_why, image_url, doc_url, doc_name, link_url, link_title, repost_of, repost_author, repost_text')
     .order('created_at', { ascending: false })
     .limit(50);
 
@@ -1423,6 +1569,12 @@ async function loadPosts(){
       time: timeAgo(p.created_at),
       fromDB: true,
       userId: p.user_id,
+      imageUrl: p.image_url || null,
+      docUrl: p.doc_url || null,
+      docName: p.doc_name || null,
+      linkUrl: p.link_url || null,
+      linkTitle: p.link_title || null,
+      repost: p.repost_author ? { author: p.repost_author, text: p.repost_text } : null,
       steal: (p.type === 'steal' && (p.steal_what || p.steal_grade)) ? {
         grade: p.steal_grade || '',
         subject: p.steal_subject || '',
@@ -1449,6 +1601,30 @@ async function savePost(postText, type){
     content: postText,
     type: type,
   };
+  // Upload image if pending
+  if(pendingImageFile){
+    try{
+      row.image_url = await uploadFile(pendingImageFile, 'images');
+    } catch(e){
+      announce('Image upload failed: ' + e.message);
+      return false;
+    }
+  }
+  // Upload doc if pending
+  if(pendingDocFile){
+    try{
+      row.doc_url = await uploadFile(pendingDocFile, 'docs');
+      row.doc_name = pendingDocFile.name;
+    } catch(e){
+      announce('Doc upload failed: ' + e.message);
+      return false;
+    }
+  }
+  // Add link if pending
+  if(pendingLinkUrl){
+    row.link_url = pendingLinkUrl;
+    try{ row.link_title = new URL(pendingLinkUrl).hostname; } catch(e){}
+  }
   // Add steal fields if applicable
   if(type === 'steal'){
     row.steal_grade   = document.getElementById('steal-grade').value.trim();
@@ -1457,14 +1633,18 @@ async function savePost(postText, type){
     row.steal_what    = document.getElementById('steal-what').value.trim();
     row.steal_why     = document.getElementById('steal-why').value.trim();
   }
-  console.log('Saving post:', row);
   const { data, error } = await sb.from('posts').insert(row).select();
-  if(error){ 
+  if(error){
     console.error('savePost error:', error);
-    announce('Could not save post: ' + error.message); 
-    return false; 
+    announce('Could not save post: ' + error.message);
+    return false;
   }
-  console.log('Post saved:', data);
+  // Clear pending attachments
+  pendingImageFile = null;
+  pendingDocFile = null;
+  pendingLinkUrl = null;
+  document.getElementById('media-preview').innerHTML = '';
+  document.getElementById('link-preview-area').innerHTML = '';
   return true;
 }
 
@@ -1654,6 +1834,31 @@ async function init(){
 
 init();
 </script>
+
+<!-- REPOST MODAL -->
+<div class="modal-overlay" id="repost-modal" role="dialog" aria-modal="true" aria-label="Share post" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box" style="width:480px">
+    <button class="modal-close" onclick="document.getElementById('repost-modal').classList.remove('open')" aria-label="Close">✕</button>
+    <div style="font-family:'Playfair Display',serif;font-size:18px;color:var(--chalk);margin-bottom:16px">Share this post</div>
+    <div id="repost-preview" style="background:var(--surface-3);border-left:3px solid var(--gold);border-radius:var(--radius-sm);padding:12px;margin-bottom:14px;font-size:13px;color:var(--chalk-70);line-height:1.5"></div>
+    <div class="auth-field">
+      <label class="auth-label" for="repost-comment">Add your thoughts <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--chalk-40)">(optional)</span></label>
+      <textarea class="auth-input" id="repost-comment" rows="3" placeholder="Why are you sharing this?" style="resize:none"></textarea>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label">Post type</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="repost-type-pills">
+        <button class="type-pill tp-shiny sel" onclick="setRepostType('shiny',this)" style="font-size:12px">✦ Shiny Object</button>
+        <button class="type-pill tp-nest" onclick="setRepostType('nest',this)" style="font-size:12px">🪺 Nest Call</button>
+        <button class="type-pill tp-flight" onclick="setRepostType('flight',this)" style="font-size:12px">↑ Flight</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:4px">
+      <button class="auth-btn" style="flex:1" onclick="submitRepost()">Share to Feed</button>
+    </div>
+    <div class="auth-error" id="repost-error" aria-live="polite"></div>
+  </div>
+</div>
 
 <!-- EDIT PROFILE MODAL -->
 <div class="modal-overlay" id="edit-profile-modal" role="dialog" aria-modal="true" aria-label="Edit Profile" onclick="if(event.target===this)this.classList.remove('open')">
