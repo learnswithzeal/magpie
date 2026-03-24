@@ -1320,18 +1320,7 @@ async function submitRepost(){
 
   if(error){ errEl.textContent = error.message; return; }
 
-  const name = currentProfile?.full_name || 'You';
-  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  POSTS.unshift({
-    id: Date.now(), type: selectedRepostType,
-    author: name, handle: 'you',
-    role: currentProfile?.role || 'Magpie member',
-    initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
-    text: postText, shinies:0, time:'just now',
-    userId: currentUser.id,
-    repost: { author: currentRepostData.author, text: currentRepostData.text?.slice(0,200) }
-  });
-  renderFeed('all');
+  await loadPosts();
   document.getElementById('repost-modal').classList.remove('open');
   announce('Shared! ↗');
 }
@@ -1668,30 +1657,14 @@ submitPost = async function(){
   const postText = text || '✨ Steal This lesson:';
   const saved = await savePost(postText, selectedType);
   if(!saved) return;
-  const name = currentProfile?.full_name || 'You';
-  const initials = name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const stealData = isSteal ? {
-    grade: document.getElementById('steal-grade').value.trim(),
-    subject: document.getElementById('steal-subject').value.trim(),
-    time: document.getElementById('steal-time').value.trim(),
-    what: stealWhat,
-    why: document.getElementById('steal-why').value.trim(),
-  } : null;
-  POSTS.unshift({
-    id: Date.now(), type: selectedType,
-    author: name, handle: 'you',
-    role: currentProfile?.role || 'Magpie member',
-    initials, avBg:'rgba(200,146,10,0.25)', avColor:'#e8c060',
-    text: postText, shinies:0, time:'just now', steal: stealData,
-    userId: currentUser.id,
-  });
-  renderFeed('all');
+  // Reload from DB so media URLs are correct
+  await loadPosts();
   document.getElementById('compose-text').value='';
   document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
   selectedType=null;
   document.getElementById('compose-hint').textContent='Choose a post type above';
   document.getElementById('steal-form').classList.remove('show');
-  if(stealData){
+  if(isSteal){
     ['steal-grade','steal-subject','steal-time','steal-what','steal-why'].forEach(id=>{
       const el = document.getElementById(id);
       if(el) el.value='';
