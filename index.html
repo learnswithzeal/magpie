@@ -1544,9 +1544,6 @@ function toggleAvatarMenu(){
 
 /* ── INIT ── */
 async function init(){
-  // Copy logo into auth modal
-  const navLogo = document.querySelector('.logo-wrap img');
-  if(navLogo) document.getElementById('auth-logo-img').src = navLogo.src;
 
   // Check for existing session
   const { data: { session } } = await sb.auth.getSession();
