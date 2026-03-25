@@ -700,7 +700,7 @@ body{
     <span class="nav-badge" aria-label="4 new">4</span>
   </button>
   <button class="nav-item" onclick="switchNav(this,'resources')">
-    <span class="nav-icon" aria-hidden="true">◈</span> Resource Hub
+    <span class="nav-icon" aria-hidden="true">✨</span> Steal This
   </button>
   <button class="nav-item" onclick="switchNav(this,'chat')">
     <span class="nav-icon" aria-hidden="true">◉</span> Live Chats
@@ -744,7 +744,6 @@ body{
       <button class="pill" onclick="filterFeed('nest',this)" aria-pressed="false">🪺 Nest Call</button>
       <button class="pill" onclick="filterFeed('flight',this)" aria-pressed="false">↑ Flight</button>
       <button class="pill" onclick="filterFeed('grounded',this)" aria-pressed="false">↓ Grounded</button>
-      <button class="pill" onclick="filterFeed('steal',this)" aria-pressed="false">✨ Steal This</button>
     </div>
 
     <!-- COMPOSE -->
@@ -787,7 +786,6 @@ body{
             <button class="type-pill tp-nest" onclick="selectType('nest',this)" aria-pressed="false">🪺 Nest Call</button>
             <button class="type-pill tp-flight" onclick="selectType('flight',this)" aria-pressed="false">↑ Flight</button>
             <button class="type-pill tp-grounded" onclick="selectType('grounded',this)" aria-pressed="false">↓ Grounded</button>
-            <button class="type-pill tp-steal" onclick="selectType('steal',this)" aria-pressed="false">✨ Steal This</button>
           </div>
 
           <div class="compose-footer">
@@ -810,13 +808,13 @@ body{
     <div class="roosts-grid" id="roosts-grid" role="list"></div>
   </div>
 
-  <!-- RESOURCE HUB -->
-  <div id="view-resources" style="display:none" role="region" aria-label="Resource Hub">
+  <!-- STEAL THIS -->
+  <div id="view-resources" style="display:none" role="region" aria-label="Steal This">
     <div class="feed-header" style="margin-bottom:18px">
-      <div><div class="section-title">Resource Hub</div><div class="section-sub">Curated tools, templates & lessons from the commons</div></div>
-      <button class="nav-btn gold">+ Add Resource</button>
+      <div><div class="section-title">✨ Steal This</div><div class="section-sub">Lesson plans, strategies & templates — take what works, share what shines</div></div>
+      <button class="nav-btn gold" onclick="openStealThisCompose()">✨ Post Treasures</button>
     </div>
-    <div class="resources-grid">
+    <div class="resources-grid" id="steal-this-grid">
       <button class="res-card"><div class="res-icon">📝</div><div class="res-title">Socratic Seminar Protocol</div><div class="res-desc">Full facilitation guide for structured academic discussion</div><div class="res-meta">✦ 142 shinies · ELA / Social Studies</div></button>
       <button class="res-card"><div class="res-icon">🧮</div><div class="res-title">Thinking Classroom Kit</div><div class="res-desc">VNPS setup, good tasks, randomized grouping scripts</div><div class="res-meta">✦ 98 shinies · Math · Gr 6–12</div></button>
       <button class="res-card"><div class="res-icon">🎭</div><div class="res-title">Silent Debate Template</div><div class="res-desc">Written debate on chart paper — zero talking, max engagement</div><div class="res-meta">✦ 87 shinies · All subjects</div></button>
@@ -949,6 +947,8 @@ const POSTS=[
   {id:5,type:'nest',author:'Taylor Kim',handle:'taylorkim',role:'Special Ed · Elementary · Oakdale',initials:'TK',avBg:'rgba(196,186,232,0.25)',avColor:'#c4bae8',text:'Calling all special ed folks — how do you handle IEP goal tracking without it taking over your life? I\'m drowning in Google Sheets and none of my systems are sustainable. 🪺',shinies:22,time:'12h ago',roost:'Special Ed Support'},
   {id:6,type:'shiny',author:'Wayground Staff',handle:'wayground_alex',role:'Wayground EdTech · ⚑ Affiliated',initials:'WA',avBg:'rgba(200,146,10,0.12)',avColor:'#c8920a',text:'Honest take: we launched a new PBL feature last quarter and the engagement numbers were fine but a teacher DM\'d me that it actually *increased* their prep time. We need to hear more of that. If you\'ve tried Wayground for PBL — what actually happened?',shinies:18,time:'1d ago'},
 ];
+// Keep a copy of seed posts to restore after sign out
+const _SEED_POSTS = [...POSTS];
 
 const ROOSTS_DATA=[
   {name:'PBL Practitioners',desc:'Project-based learning in the real world — what works, what doesn\'t',members:'342',posts:'12 posts today',color:'#8ec4a2',joined:true},
@@ -1022,7 +1022,7 @@ function renderFeed(filter){
         ${p.userId && p.userId === currentUser?.id ? `<button class="post-action" onclick="deletePost('${p.id}',this)" aria-label="Delete your post" style="color:var(--red-soft);margin-left:4px" title="Delete post">🗑</button>` : ''}
       </div>
       <div class="post-text">${p.text}</div>
-      ${p.imageUrl?`<div style="margin-top:12px;border-radius:var(--radius-sm);overflow:hidden;max-height:360px"><img src="${p.imageUrl}" alt="Post image" style="width:100%;object-fit:cover;display:block" loading="lazy"></div>`:''}
+      ${p.imageUrl?`<div style="margin-top:12px;border-radius:var(--radius-sm);overflow:hidden"><a href="${p.imageUrl}" target="_blank" rel="noopener"><img src="${p.imageUrl}" alt="Post image" style="width:100%;display:block;cursor:zoom-in" loading="lazy"></a></div>`:''}
       ${p.docUrl?`<a href="${p.docUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;text-decoration:none"><span style="font-size:20px">📄</span><div><div style="font-size:13px;font-weight:500;color:var(--chalk)">${p.docName||'Document'}</div><div style="font-size:11px;color:var(--chalk-40)">Click to open</div></div></a>`:''}
       ${p.linkUrl?`<a href="${p.linkUrl}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;text-decoration:none"><span style="font-size:20px">🔗</span><div><div style="font-size:13px;font-weight:500;color:var(--chalk)">${p.linkTitle||'Link'}</div><div style="font-size:11px;color:var(--chalk-40);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px">${p.linkUrl}</div></div></a>`:''}
       ${p.repost?`<div style="margin-top:10px;border-left:3px solid var(--gold);border-radius:var(--radius-sm);padding:10px 12px;background:var(--chalk-05)"><div style="font-size:11px;color:var(--chalk-40);margin-bottom:4px">↗ ${p.repost.author}</div><div style="font-size:13px;color:var(--chalk-70);line-height:1.5">${p.repost.text||''}</div></div>`:''}
@@ -1164,17 +1164,11 @@ function selectType(type,btn){
   document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
   btn.classList.add('sel');btn.setAttribute('aria-pressed','true');
   selectedType=type;
-  const hints={shiny:'Share an idea, resource, or insight',nest:'Ask for help from your flock',flight:'Celebrate a win, big or small',grounded:'Be honest about a struggle or bombed lesson',steal:'Fill in the fields below to share your lesson'};
+  const hints={shiny:'Share an idea, resource, or insight',nest:'Ask for help from your flock',flight:'Celebrate a win, big or small',grounded:'Be honest about a struggle or bombed lesson'};
   document.getElementById('compose-hint').textContent=hints[type]||'';
-  document.getElementById('steal-form').classList.toggle('show',type==='steal');
-  const textarea = document.getElementById('compose-text');
-  if(type==='steal'){
-    textarea.placeholder='Any intro or context? (optional)';
-    textarea.required = false;
-  } else {
-    textarea.placeholder='Share a shiny idea, send a nest call, celebrate a flight…';
-    textarea.required = true;
-  }
+  const textarea=document.getElementById('compose-text');
+  textarea.placeholder='Share a shiny idea, send a nest call, celebrate a flight…';
+  textarea.required=true;
 }
 
 // submitPost is defined below after Supabase is set up
@@ -1247,21 +1241,28 @@ function showLinkInput(){
 
 function confirmLink(){
   const input = document.getElementById('link-url-input');
-  const url = input?.value.trim();
+  if(!input) return;
+  let url = input.value.trim();
   if(!url) return;
+  // Auto-add https:// if missing
+  if(!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url;
   try{
-    const host = new URL(url).hostname;
+    const parsed = new URL(url);
+    const host = parsed.hostname;
     pendingLinkUrl = url;
     document.getElementById('link-preview-area').innerHTML = `
-      <div style="margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px;display:flex;gap:10px;align-items:center">
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;background:var(--chalk-05);border:1px solid var(--chalk-08);border-radius:var(--radius-sm);padding:10px 12px">
         <span style="font-size:18px">🔗</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:500;color:var(--chalk)">${host}</div>
           <div style="font-size:11px;color:var(--chalk-40);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${url}</div>
         </div>
-        <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px" onclick="pendingLinkUrl=null;this.closest('div').remove()" aria-label="Remove link">✕</button>
+        <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;font-size:16px;flex-shrink:0" onclick="pendingLinkUrl=null;document.getElementById('link-preview-area').innerHTML=''" aria-label="Remove link">✕</button>
       </div>`;
-  } catch(e){ announce('Please enter a valid URL starting with https://'); }
+    console.log('Link set:', pendingLinkUrl);
+  } catch(e){ 
+    announce('Please enter a valid URL'); 
+  }
 }
 
 async function uploadFile(file, folder){
@@ -1341,6 +1342,7 @@ function switchNav(btn,view){
   showView(view);
   if(view==='roosts')renderRoosts();
   if(view==='chat')renderChatSessions();
+  if(view==='resources')loadStealThisPosts();
 }
 
 /* ── PROFILES ── */
@@ -1417,6 +1419,8 @@ document.addEventListener('keydown',e=>{
     if(document.getElementById('profile-modal').classList.contains('open'))closeProfileDirect();
     if(document.getElementById('chat-modal').classList.contains('open'))closeChatDirect();
     if(document.getElementById('edit-profile-modal').classList.contains('open'))document.getElementById('edit-profile-modal').classList.remove('open');
+    if(document.getElementById('steal-compose-modal').classList.contains('open'))document.getElementById('steal-compose-modal').classList.remove('open');
+    if(document.getElementById('repost-modal').classList.contains('open'))document.getElementById('repost-modal').classList.remove('open');
     document.getElementById('avatar-menu')?.remove();
   }
 });
@@ -1476,10 +1480,16 @@ async function doSignup(){
 }
 
 async function doSignOut(){
-  await sb.auth.signOut();
+  document.getElementById('avatar-menu')?.remove();
+  const { error } = await sb.auth.signOut();
+  if(error){ announce('Sign out failed: ' + error.message); return; }
   currentUser = null;
   currentProfile = null;
   updateNavForAuth(null);
+  // Reset feed to seed data
+  POSTS.length = 0;
+  POSTS.push(..._SEED_POSTS);
+  renderFeed('all');
   document.getElementById('auth-overlay').style.display = 'flex';
 }
 
@@ -1614,14 +1624,7 @@ async function savePost(postText, type){
     row.link_url = pendingLinkUrl;
     try{ row.link_title = new URL(pendingLinkUrl).hostname; } catch(e){}
   }
-  // Add steal fields if applicable
-  if(type === 'steal'){
-    row.steal_grade   = document.getElementById('steal-grade').value.trim();
-    row.steal_subject = document.getElementById('steal-subject').value.trim();
-    row.steal_time    = document.getElementById('steal-time').value.trim();
-    row.steal_what    = document.getElementById('steal-what').value.trim();
-    row.steal_why     = document.getElementById('steal-why').value.trim();
-  }
+
   const { data, error } = await sb.from('posts').insert(row).select();
   if(error){
     console.error('savePost error:', error);
@@ -1648,28 +1651,16 @@ function timeAgo(ts){
 /* ── OVERRIDE submitPost to save to Supabase ── */
 submitPost = async function(){
   const text = document.getElementById('compose-text').value.trim();
-  const isSteal = selectedType === 'steal';
-  const stealWhat = isSteal ? document.getElementById('steal-what').value.trim() : '';
   if(!selectedType){ announce('Choose a post type first.'); return; }
-  if(!isSteal && !text){ announce('Write something first!'); return; }
-  if(isSteal && !stealWhat && !text){ announce('Add your strategy or a description first.'); return; }
+  if(!text){ announce('Write something first!'); return; }
   if(!currentUser){ announce('Sign in to post!'); document.getElementById('auth-overlay').style.display='flex'; return; }
-  const postText = text || '✨ Steal This lesson:';
-  const saved = await savePost(postText, selectedType);
+  const saved = await savePost(text, selectedType);
   if(!saved) return;
-  // Reload from DB so media URLs are correct
   await loadPosts();
   document.getElementById('compose-text').value='';
   document.querySelectorAll('.type-pill').forEach(b=>{b.classList.remove('sel');b.setAttribute('aria-pressed','false')});
   selectedType=null;
   document.getElementById('compose-hint').textContent='Choose a post type above';
-  document.getElementById('steal-form').classList.remove('show');
-  if(isSteal){
-    ['steal-grade','steal-subject','steal-time','steal-what','steal-why'].forEach(id=>{
-      const el = document.getElementById(id);
-      if(el) el.value='';
-    });
-  }
   announce('Posted! ✦');
 };
 
@@ -1722,7 +1713,7 @@ function toggleAvatarMenu(){
       <div style="font-size:11px;color:var(--chalk-40);margin-top:2px">${role}</div>
     </div>
     <button onclick="openEditProfile();document.getElementById('avatar-menu')?.remove()" style="display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:none;background:transparent;color:var(--chalk-70);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer" onmouseover="this.style.background='var(--chalk-08)'" onmouseout="this.style.background='transparent'">✏️ Edit Profile</button>
-    <button onclick="doSignOut();document.getElementById('avatar-menu')?.remove()" style="display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:none;background:transparent;color:var(--red-soft);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer" onmouseover="this.style.background='var(--chalk-08)'" onmouseout="this.style.background='transparent'">→ Sign Out</button>
+    <button onclick="doSignOut()" style="display:block;width:100%;text-align:left;padding:8px 10px;border-radius:8px;border:none;background:transparent;color:var(--red-soft);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer" onmouseover="this.style.background='var(--chalk-08)'" onmouseout="this.style.background='transparent'">→ Sign Out</button>
   `;
   document.querySelector('.topnav').style.position = 'relative';
   document.querySelector('.topnav').appendChild(menu);
@@ -1733,7 +1724,119 @@ function toggleAvatarMenu(){
   }), 10);
 }
 
-/* ── DELETE POST ── */
+/* ── STEAL THIS SECTION ── */
+let stealPendingImg = null;
+let stealPendingDoc = null;
+
+function openStealThisCompose(){
+  if(!currentUser){ announce('Sign in to post!'); document.getElementById('auth-overlay').style.display='flex'; return; }
+  ['st-title','st-grade','st-subject','st-time','st-what','st-why'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('st-media-preview').innerHTML='';
+  document.getElementById('st-error').textContent='';
+  stealPendingImg=null; stealPendingDoc=null;
+  document.getElementById('steal-compose-modal').classList.add('open');
+}
+
+function handleStealImg(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>5*1024*1024){ announce('Image must be under 5MB'); return; }
+  stealPendingImg=f;
+  const url=URL.createObjectURL(f);
+  document.getElementById('st-media-preview').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;border:1px solid var(--chalk-15)">
+      <span style="font-size:12px;color:var(--chalk-40)">${f.name}</span>
+      <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer" onclick="stealPendingImg=null;this.closest('div').remove()">✕</button>
+    </div>`;
+  e.target.value='';
+}
+
+function handleStealDoc(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>10*1024*1024){ announce('Doc must be under 10MB'); return; }
+  stealPendingDoc=f;
+  document.getElementById('st-media-preview').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-top:6px;background:var(--chalk-05);border-radius:8px;padding:8px 10px">
+      <span>📄</span>
+      <span style="font-size:12px;color:var(--chalk-70)">${f.name}</span>
+      <button style="background:none;border:none;color:var(--chalk-40);cursor:pointer;margin-left:auto" onclick="stealPendingDoc=null;this.closest('div').remove()">✕</button>
+    </div>`;
+  e.target.value='';
+}
+
+async function submitStealThis(){
+  if(!currentUser){ announce('Sign in to post!'); return; }
+  const title=document.getElementById('st-title').value.trim();
+  const what=document.getElementById('st-what').value.trim();
+  const errEl=document.getElementById('st-error');
+  errEl.textContent='';
+  if(!title){ errEl.textContent='Please add a title.'; return; }
+  if(!what){ errEl.textContent='Please describe the strategy.'; return; }
+
+  const btn=document.getElementById('st-submit-btn');
+  btn.disabled=true; btn.innerHTML='<span class="loading-spinner"></span>Sharing…';
+
+  const row={
+    user_id: currentUser.id,
+    content: title,
+    type: 'steal',
+    steal_grade: document.getElementById('st-grade').value.trim(),
+    steal_subject: document.getElementById('st-subject').value.trim(),
+    steal_time: document.getElementById('st-time').value.trim(),
+    steal_what: what,
+    steal_why: document.getElementById('st-why').value.trim(),
+  };
+
+  if(stealPendingImg){
+    try{ row.image_url=await uploadFile(stealPendingImg,'images'); } catch(e){ errEl.textContent='Image upload failed: '+e.message; btn.disabled=false; btn.textContent='✨ Share with the Flock'; return; }
+  }
+  if(stealPendingDoc){
+    try{ row.doc_url=await uploadFile(stealPendingDoc,'docs'); row.doc_name=stealPendingDoc.name; } catch(e){ errEl.textContent='Doc upload failed: '+e.message; btn.disabled=false; btn.textContent='✨ Share with the Flock'; return; }
+  }
+
+  const {error}=await sb.from('posts').insert(row);
+  btn.disabled=false; btn.textContent='✨ Share with the Flock';
+  if(error){ errEl.textContent=error.message; return; }
+
+  document.getElementById('steal-compose-modal').classList.remove('open');
+  await loadStealThisPosts();
+  announce('Treasure shared! ✨');
+}
+
+async function loadStealThisPosts(){
+  const {data,error}=await sb.from('posts')
+    .select('id,user_id,content,type,created_at,steal_grade,steal_subject,steal_time,steal_what,steal_why,image_url,doc_url,doc_name,profiles(full_name,role)')
+    .eq('type','steal')
+    .order('created_at',{ascending:false})
+    .limit(50);
+
+  const grid=document.getElementById('steal-this-grid');
+  if(!grid) return;
+  if(error||!data||!data.length){
+    // Keep seed cards if no DB posts yet
+    return;
+  }
+
+  const dbCards=data.map(p=>{
+    const profile=p.profiles||{};
+    const name=profile.full_name||'Anonymous';
+    return `
+      <div class="res-card" style="text-align:left;cursor:default">
+        ${p.image_url?`<img src="${p.image_url}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px" loading="lazy">`:'<div class="res-icon">✨</div>'}
+        <div class="res-title">${p.content}</div>
+        ${p.steal_grade||p.steal_subject?`<div style="font-size:11px;color:var(--chalk-40);margin:4px 0">${[p.steal_grade,p.steal_subject,p.steal_time].filter(Boolean).join(' · ')}</div>`:''}
+        ${p.steal_what?`<div class="res-desc" style="margin-top:6px">${p.steal_what.slice(0,120)}${p.steal_what.length>120?'…':''}</div>`:''}
+        ${p.steal_why?`<div style="font-size:11px;font-style:italic;color:var(--chalk-40);margin-top:6px">"${p.steal_why.slice(0,80)}${p.steal_why.length>80?'…':''}"</div>`:''}
+        ${p.doc_url?`<a href="${p.doc_url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;color:var(--gold);text-decoration:none">📄 ${p.doc_name||'Download'}</a>`:''}
+        <div class="res-meta" style="margin-top:10px">by ${name} · ${timeAgo(p.created_at)}</div>
+      </div>`;
+  }).join('');
+
+  // Put DB posts first, then seed cards
+  grid.innerHTML = dbCards + grid.innerHTML;
+}
 async function deletePost(id, btn){
   if(!currentUser) return;
   if(!confirm('Delete this post? This cannot be undone.')) return;
@@ -1807,6 +1910,54 @@ async function init(){
 
 init();
 </script>
+
+<!-- STEAL THIS COMPOSE MODAL -->
+<div class="modal-overlay" id="steal-compose-modal" role="dialog" aria-modal="true" aria-label="Post Treasures" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal-box" style="width:520px;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('steal-compose-modal').classList.remove('open')" aria-label="Close">✕</button>
+    <div style="font-family:'Playfair Display',serif;font-size:20px;color:var(--chalk);margin-bottom:6px">✨ Post Treasures</div>
+    <div style="font-size:12px;color:var(--chalk-40);margin-bottom:20px">Share a lesson, strategy or template your flock can steal</div>
+
+    <div class="auth-field">
+      <label class="auth-label" for="st-title">Title</label>
+      <input class="auth-input" id="st-title" type="text" placeholder="e.g. Silent Debate Protocol"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="auth-field">
+        <label class="auth-label" for="st-grade">Grade</label>
+        <input class="auth-input" id="st-grade" type="text" placeholder="e.g. 7th"/>
+      </div>
+      <div class="auth-field">
+        <label class="auth-label" for="st-subject">Subject</label>
+        <input class="auth-input" id="st-subject" type="text" placeholder="e.g. ELA"/>
+      </div>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="st-time">Time needed</label>
+      <input class="auth-input" id="st-time" type="text" placeholder="e.g. 20 min"/>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="st-what">The strategy — what do they actually do?</label>
+      <textarea class="auth-input" id="st-what" rows="4" placeholder="Step by step: first you… then students… finally…" style="resize:none"></textarea>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label" for="st-why">Why it worked</label>
+      <input class="auth-input" id="st-why" type="text" placeholder="The magic ingredient…"/>
+    </div>
+    <div class="auth-field">
+      <label class="auth-label">Attach a doc or image <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--chalk-40)">(optional)</span></label>
+      <div style="display:flex;gap:8px">
+        <button class="attach-btn" onclick="document.getElementById('st-file-img').click()">🖼 Image</button>
+        <button class="attach-btn" onclick="document.getElementById('st-file-doc').click()">📄 Doc</button>
+      </div>
+      <input type="file" id="st-file-img" class="hidden-file" accept="image/jpeg,image/png,image/gif,image/webp" onchange="handleStealImg(event)">
+      <input type="file" id="st-file-doc" class="hidden-file" accept=".pdf,.doc,.docx" onchange="handleStealDoc(event)">
+      <div id="st-media-preview" style="margin-top:8px"></div>
+    </div>
+    <button class="auth-btn" onclick="submitStealThis()" id="st-submit-btn">✨ Share with the Flock</button>
+    <div class="auth-error" id="st-error" aria-live="polite"></div>
+  </div>
+</div>
 
 <!-- REPOST MODAL -->
 <div class="modal-overlay" id="repost-modal" role="dialog" aria-modal="true" aria-label="Share post" onclick="if(event.target===this)this.classList.remove('open')">
