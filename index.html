@@ -1806,36 +1806,41 @@ async function submitStealThis(){
 }
 
 async function loadStealThisPosts(){
-  const {data,error}=await sb.from('posts')
-    .select('id,user_id,content,type,created_at,steal_grade,steal_subject,steal_time,steal_what,steal_why,image_url,doc_url,doc_name,profiles(full_name,role)')
+  const grid = document.getElementById('steal-this-grid');
+  if(!grid) return;
+
+  const {data, error} = await sb.from('posts')
+    .select('id, user_id, content, type, created_at, steal_grade, steal_subject, steal_time, steal_what, steal_why, image_url, doc_url, doc_name')
     .eq('type','steal')
-    .order('created_at',{ascending:false})
+    .order('created_at', {ascending: false})
     .limit(50);
 
-  const grid=document.getElementById('steal-this-grid');
-  if(!grid) return;
-  if(error||!data||!data.length){
-    // Keep seed cards if no DB posts yet
-    return;
-  }
+  if(error || !data || !data.length) return;
 
-  const dbCards=data.map(p=>{
-    const profile=p.profiles||{};
-    const name=profile.full_name||'Anonymous';
+  // Fetch profiles separately
+  const userIds = [...new Set(data.map(p => p.user_id))];
+  const {data: profiles} = await sb.from('profiles').select('id, full_name, role').in('id', userIds);
+  const profileMap = {};
+  (profiles||[]).forEach(p => profileMap[p.id] = p);
+
+  const dbCards = data.map(p => {
+    const profile = profileMap[p.user_id] || {};
+    const name = profile.full_name || 'Anonymous';
     return `
       <div class="res-card" style="text-align:left;cursor:default">
-        ${p.image_url?`<img src="${p.image_url}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px" loading="lazy">`:'<div class="res-icon">✨</div>'}
+        ${p.image_url ? `<img src="${p.image_url}" style="width:100%;height:120px;object-fit:cover;border-radius:8px;margin-bottom:10px" loading="lazy">` : '<div class="res-icon">✨</div>'}
         <div class="res-title">${p.content}</div>
-        ${p.steal_grade||p.steal_subject?`<div style="font-size:11px;color:var(--chalk-40);margin:4px 0">${[p.steal_grade,p.steal_subject,p.steal_time].filter(Boolean).join(' · ')}</div>`:''}
-        ${p.steal_what?`<div class="res-desc" style="margin-top:6px">${p.steal_what.slice(0,120)}${p.steal_what.length>120?'…':''}</div>`:''}
-        ${p.steal_why?`<div style="font-size:11px;font-style:italic;color:var(--chalk-40);margin-top:6px">"${p.steal_why.slice(0,80)}${p.steal_why.length>80?'…':''}"</div>`:''}
-        ${p.doc_url?`<a href="${p.doc_url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;color:var(--gold);text-decoration:none">📄 ${p.doc_name||'Download'}</a>`:''}
+        ${p.steal_grade||p.steal_subject ? `<div style="font-size:11px;color:var(--chalk-40);margin:4px 0">${[p.steal_grade,p.steal_subject,p.steal_time].filter(Boolean).join(' · ')}</div>` : ''}
+        ${p.steal_what ? `<div class="res-desc" style="margin-top:6px">${p.steal_what.slice(0,120)}${p.steal_what.length>120?'…':''}</div>` : ''}
+        ${p.steal_why ? `<div style="font-size:11px;font-style:italic;color:var(--chalk-40);margin-top:6px">"${p.steal_why.slice(0,80)}${p.steal_why.length>80?'…':''}"</div>` : ''}
+        ${p.doc_url ? `<a href="${p.doc_url}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;color:var(--gold);text-decoration:none">📄 ${p.doc_name||'Download'}</a>` : ''}
         <div class="res-meta" style="margin-top:10px">by ${name} · ${timeAgo(p.created_at)}</div>
       </div>`;
   }).join('');
 
-  // Put DB posts first, then seed cards
-  grid.innerHTML = dbCards + grid.innerHTML;
+  // Put DB posts first, keep seed cards after
+  const seedCards = grid.innerHTML;
+  grid.innerHTML = dbCards + seedCards;
 }
 async function deletePost(id, btn){
   if(!currentUser) return;
